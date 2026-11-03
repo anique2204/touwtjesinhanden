@@ -14,7 +14,7 @@ export default function Ranking() {
 
   const scores = useMemo(() => (c ? computeScores({
     challenge: c, memberIds: data.members.map((m) => m.user_id), activities: data.activities,
-    goals: data.goals, habits: data.habits, checks: data.checks,
+    goals: data.goals, habits: data.habits, checks: data.checks, pauses: data.pauses,
   }) : []), [c, data]);
 
   if (!c) return <div className="card empty">Er is nog geen challenge.</div>;
@@ -35,7 +35,7 @@ export default function Ranking() {
         {scores.map((s, i) => {
           const p = data.profiles[s.userId];
           const isOpen = open === s.userId;
-          const streak = activeStreak(s.userId, data.checks, data.activities);
+          const streak = activeStreak(s.userId, data.checks, data.activities, data.pauses);
           const tw = s.thisWeek;
           const twMet = tw ? tw.goals.filter((g) => g.met).length : 0;
           return (

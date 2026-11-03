@@ -66,7 +66,7 @@ export async function makeProgressPdf(ms: Measurement[], name: string): Promise<
   doc.setFillColor(246, 238, 241); doc.setDrawColor(217, 184, 196);
   doc.roundedRect(M, 31, CW, 9, 2, 2, 'FD');
   doc.setFontSize(9.5); doc.setTextColor(64, 42, 44);
-  doc.text('Prive: dit overzicht is alleen voor jou. Niemand in de groep kan deze gegevens zien.', M + 3, 36.8);
+  doc.text('Prive: dit overzicht is voor jou. Niemand in de groep kan deze gegevens zien.', M + 3, 36.8);
 
   // ---- Matentabel ----
   let y = 50;

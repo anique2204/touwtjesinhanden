@@ -28,11 +28,11 @@ export default function Calendar() {
   const people = data.members.map((m) => ({ id: m.user_id, p: data.profiles[m.user_id] }));
 
   const stats = useMemo(() => {
-    const map: Record<string, { id: string; color: string; level: 'none' | 'some' | 'all' }[]> = {};
+    const map: Record<string, { id: string; color: string; level: 'none' | 'some' | 'all' | 'pause' }[]> = {};
     for (const d of cells) {
       if (d > t) continue;
       map[d] = people.map(({ id, p }) => ({
-        id, color: p?.color ?? '#999', level: dayStatus(id, d, data.habits, data.checks, data.activities).level,
+        id, color: p?.color ?? '#999', level: dayStatus(id, d, data.habits, data.checks, data.activities, data.pauses).level,
       }));
     }
     return map;
@@ -71,6 +71,7 @@ export default function Calendar() {
         <div className="cal-legend muted small">
           <span><i className="all" /> alles gedaan</span>
           <span><i className="some" /> deels / getraind</span>
+          <span><i className="pause" /> pauzedag</span>
           <span>⭐ hele groep alles</span>
         </div>
         <div className="cal-people">

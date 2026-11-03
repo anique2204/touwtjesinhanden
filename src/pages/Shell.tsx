@@ -7,8 +7,9 @@ import GroupPage from './GroupPage';
 import Progress from './Progress';
 import Calendar from './Calendar';
 import Goals from './Goals';
+import Body from './Body';
 
-export type Tab = 'today' | 'calendar' | 'add' | 'ranking' | 'me' | 'group' | 'progress' | 'goals';
+export type Tab = 'today' | 'calendar' | 'add' | 'ranking' | 'me' | 'group' | 'progress' | 'goals' | 'body';
 
 const TABS: { id: Tab; label: string; icon: string }[] = [
   { id: 'today', label: 'Vandaag', icon: '🏠' },
@@ -19,7 +20,7 @@ const TABS: { id: Tab; label: string; icon: string }[] = [
 ];
 
 // Subpagina's horen bij een tabblad (voor de markering onderin)
-const PARENT: Partial<Record<Tab, Tab>> = { group: 'me', progress: 'me', goals: 'today' };
+const PARENT: Partial<Record<Tab, Tab>> = { group: 'me', progress: 'me', goals: 'today', body: 'me' };
 
 export default function Shell() {
   const [tab, setTab] = useState<Tab>('today');
@@ -38,6 +39,7 @@ export default function Shell() {
         {tab === 'group' && <GroupPage back={() => go('me')} />}
         {tab === 'progress' && <Progress back={() => go('me')} />}
         {tab === 'goals' && <Goals back={() => go('today')} />}
+        {tab === 'body' && <Body back={() => go('me')} />}
       </main>
 
       {sheet && (

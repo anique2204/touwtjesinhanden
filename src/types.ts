@@ -47,7 +47,35 @@ export interface Habit {
   is_private: boolean; start_date: string; archived_on: string | null; created_at: string;
 }
 export interface HabitCheck { habit_id: string; group_id: string; user_id: string; check_date: string }
-export interface Cheer { group_id: string; from_user: string; to_user: string; day: string }
+export type CheerKind = 'highfive' | 'heart' | 'thinking';
+export interface Cheer { group_id: string; from_user: string; to_user: string; day: string; kind: CheerKind }
+export const CHEER_KINDS: { id: CheerKind; emoji: string; label: string }[] = [
+  { id: 'highfive', emoji: '🙌', label: 'High five' },
+  { id: 'heart', emoji: '❤️', label: 'Hartje' },
+  { id: 'thinking', emoji: '🫶', label: 'Denk aan je' },
+];
+
+export interface PauseDay { user_id: string; group_id: string; day: string }
+
+export interface Mood { user_id: string; group_id: string; day: string; score: number; tags: string[]; note: string | null; shared: boolean }
+export interface SharedMood { user_id: string; day: string; score: number }
+export const MOODS = [
+  { score: 1, emoji: '😣', label: 'Zwaar' },
+  { score: 2, emoji: '😕', label: 'Matig' },
+  { score: 3, emoji: '😐', label: 'Oké' },
+  { score: 4, emoji: '🙂', label: 'Goed' },
+  { score: 5, emoji: '😄', label: 'Top' },
+];
+export const moodEmoji = (score: number) => MOODS.find((m) => m.score === score)?.emoji ?? '❔';
+export const MOOD_TAGS = ['energiek', 'moe', 'rustig', 'gestrest', 'blij', 'prikkelbaar', 'verdrietig', 'trots', 'ziek', 'slecht geslapen'];
+
+export interface PrivateSettings { user_id: string; track_period: boolean; track_sex: boolean; cycle_length: number | null; period_length: number | null }
+export type Flow = 'spotting' | 'licht' | 'normaal' | 'hevig';
+export interface BodyDay {
+  user_id: string; day: string; period: boolean; flow: Flow | null; symptoms: string[];
+  sex: boolean; sex_protected: boolean | null; note: string | null;
+}
+export const SYMPTOMS = ['kramp', 'hoofdpijn', 'moe', 'opgeblazen', 'gevoelige borsten', 'rugpijn', 'acne', 'trek', 'misselijk', 'slecht geslapen'];
 
 export const HABIT_IDEAS: { emoji: string; title: string; per_week: number }[] = [
   { emoji: '💧', title: '2 liter water', per_week: 7 },

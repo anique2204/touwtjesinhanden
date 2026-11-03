@@ -3,6 +3,7 @@ import { useStore } from '../store';
 import { computeScores } from '../points';
 import { daysBetween, shortDate, today } from '../dates';
 import HabitList from '../components/HabitList';
+import MoodCheckin from '../components/MoodCheckin';
 import GroupDay from '../components/GroupDay';
 import ActivityCard from '../components/ActivityCard';
 import type { Tab } from './Shell';
@@ -21,7 +22,7 @@ export default function Today({ go }: { go: (t: Tab) => void }) {
 
   const myScore = useMemo(() => c ? computeScores({
     challenge: c, memberIds: data.members.map((m) => m.user_id), activities: data.activities,
-    goals: data.goals, habits: data.habits, checks: data.checks,
+    goals: data.goals, habits: data.habits, checks: data.checks, pauses: data.pauses,
   }).find((s) => s.userId === me.id) : undefined, [c, data, me.id]);
 
   return (
@@ -48,6 +49,8 @@ export default function Today({ go }: { go: (t: Tab) => void }) {
           </span>
         </div>
       )}
+
+      <MoodCheckin />
 
       <HabitList onAddGoal={() => go('goals')} onAddTraining={() => go('add')} />
 

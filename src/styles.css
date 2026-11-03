@@ -338,3 +338,54 @@ textarea { resize: vertical; }
 .photo-row { display: flex; align-items: center; gap: 16px; }
 label.btn { display: inline-block; text-align: center; cursor: pointer; }
 .btn.disabled { opacity: .45; pointer-events: none; }
+.cal-dots i.pause, .cal-legend i.pause { border-style: dotted; opacity: .7; }
+
+/* Reacties + mood */
+.reactions { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; padding-left: 46px; }
+.react {
+  border: 1px solid var(--line); background: #fff; border-radius: 999px; padding: 4px 9px; font-size: 15px; cursor: pointer;
+  display: inline-flex; gap: 4px; align-items: center; transition: transform .15s;
+}
+.react b { font-size: 12px; color: var(--accent); }
+.react.on { background: var(--accent-soft); border-color: var(--accent-line); transform: scale(1.06); }
+.react.static { cursor: default; border-style: dashed; }
+.avatar-wrap { position: relative; display: inline-flex; flex: none; }
+.mood-badge { position: absolute; right: -6px; bottom: -4px; font-size: 15px; line-height: 1; background: #fff; border-radius: 50%; padding: 1px; box-shadow: var(--shadow); }
+
+/* Mood */
+.mood-row { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; }
+.mood-btn { border: 1px solid var(--line); background: #fff; border-radius: 14px; padding: 8px 2px; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 2px; transition: transform .15s; }
+.mood-btn span { font-size: 28px; line-height: 1.1; }
+.mood-btn small { font-size: 11px; color: var(--muted); }
+.mood-btn.on { background: var(--accent-soft); border-color: var(--accent); transform: scale(1.05); }
+.mood-done { display: flex; align-items: center; gap: 12px; }
+.mood-big { font-size: 34px; }
+.share-row { display: flex; align-items: center; gap: 12px; }
+.share-row .grow { display: flex; flex-direction: column; }
+
+/* Pauze */
+.pause-banner { display: flex; gap: 10px; align-items: center; background: #f1edf6; border: 1px solid #d8cde6; color: var(--deep-mocha); border-radius: 12px; padding: 10px 12px; }
+.pause-banner > span { font-size: 24px; }
+.hl-actions { display: inline-flex; gap: 14px; }
+.link:disabled { opacity: .4; cursor: default; }
+
+/* Cyclus */
+.tiny { font-size: 11px; }
+.danger-text { color: var(--danger); }
+.cycle-hero { background: linear-gradient(160deg, #fbf1f5, #fff); }
+.cycle-top { display: flex; gap: 12px; align-items: center; }
+.cycle-emoji { font-size: 34px; }
+.body-day.period { background: #f3d5df; }
+.body-day.period .cal-n { color: #8a2246; }
+.body-day.predicted { background: transparent; border: 1.5px dashed #e1a9bd; opacity: 1; }
+.body-day.predicted:disabled { opacity: .9; }
+.body-marks { display: flex; gap: 1px; font-size: 10px; line-height: 1; }
+.body-marks i { font-style: normal; }
+.leg-period, .leg-pred { width: 12px !important; height: 12px !important; border-radius: 4px !important; }
+.leg-period { background: #f3d5df; border: 0 !important; }
+.leg-pred { border: 1.5px dashed #e1a9bd !important; }
+.insights { display: flex; flex-direction: column; gap: 8px; }
+.ins-row { display: grid; grid-template-columns: 1.3fr .8fr 1fr auto; gap: 8px; align-items: center; font-size: 14px; }
+.ins-bar { height: 8px; background: var(--soft); border-radius: 99px; overflow: hidden; }
+.ins-bar i { display: block; height: 100%; background: var(--accent); border-radius: 99px; }
+.ins-pct { font-size: 12px; color: var(--muted); min-width: 32px; text-align: right; }

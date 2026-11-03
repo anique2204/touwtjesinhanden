@@ -3,7 +3,7 @@ import { errMsg, supabase } from '../supabase';
 import { useStore } from '../store';
 import type { Habit } from '../types';
 import { addDays, mondayOf, relativeDay, today } from '../dates';
-import { dayStatus, habitActiveOn, habitStreak, required, RULES } from '../points';
+import { dayStatus, habitActiveOn, habitStreak, pauseSet, required, RULES } from '../points';
 
 const CHEERS_ALL = ['Alles gedaan, wat goed! 🎉', 'Topdag! Alles afgevinkt 🌟', 'Je hebt het helemaal in handen 💪', 'Yes! Alles binnen 🙌'];
 
@@ -15,7 +15,7 @@ export default function HabitList({ onAddGoal, onAddTraining }: { onAddGoal: () 
   const mine = data.habits.filter((h) => h.user_id === me.id && habitActiveOn(h, day));
   const myChecks = data.checks.filter((x) => x.user_id === me.id);
   const isChecked = (h: Habit) => myChecks.some((x) => x.habit_id === h.id && x.check_date === day);
-  const status = dayStatus(me.id, day, data.habits, data.checks, data.activities);
+  const status = dayStatus(me.id, day, data.habits, data.checks, data.activities, data.pauses);
   const mon = mondayOf(day), sun = addDays(mon, 6);
 
   const tg = currentChallenge && data.goals.find((g) => g.user_id === me.id && g.challenge_id === currentChallenge.id);
@@ -43,6 +43,23 @@ export default function HabitList({ onAddGoal, onAddTraining }: { onAddGoal: () 
   }
 
   const days = [0, -1, -2].map((n) => addDays(today(), n));
+  const paused = data.pauses.some((p) => p.user_id === me.id && p.day === day);
+  const pausesThisWeek = data.pauses.filter((p) => p.user_id === me.id && p.day >= mon && p.day <= sun).length;
+
+  async function togglePause() {
+    if (paused) {
+      if (!confirm('Pauzedag opheffen?')) return;
+    } else if (!confirm(`${relativeDay(day)} als pauzedag nemen? 🌙\n\nJe streaks breken niet en je weekdoelen worden naar verhouding lager. De groep ziet alleen "pauzedag", niet waarom. Max. 2 per week.`)) return;
+    const row = { user_id: me.id, group_id: data.group.id, day };
+    patch((d) => ({ ...d, pauses: paused ? d.pauses.filter((p) => !(p.user_id === me.id && p.day === day)) : [...d.pauses, row] }));
+    const { error } = paused
+      ? await supabase.from('pause_days').delete().eq('user_id', me.id).eq('day', day)
+      : await supabase.from('pause_days').insert(row);
+    if (error) {
+      patch((d) => ({ ...d, pauses: paused ? [...d.pauses, row] : d.pauses.filter((p) => !(p.user_id === me.id && p.day === day)) }));
+      alert(errMsg(error));
+    }
+  }
   const allDone = status.total > 0 && status.done === status.total;
 
   return (
@@ -63,6 +80,12 @@ export default function HabitList({ onAddGoal, onAddTraining }: { onAddGoal: () 
         </div>
       ) : (
         <>
+          {paused && (
+            <div className="pause-banner">
+              <span>🌙</span>
+              <div className="grow"><b>Pauzedag</b><div className="small">Je streaks zijn veilig. Rust lekker uit, afvinken mag nog steeds 💜</div></div>
+            </div>
+          )}
           {status.total > 0 && (
             <div className={'day-progress' + (allDone ? ' done' : '')}>
               <div className="bar"><div style={{ width: `${(status.done / status.total) * 100}%` }} /></div>
@@ -73,7 +96,7 @@ export default function HabitList({ onAddGoal, onAddTraining }: { onAddGoal: () 
           <ul className="habits">
             {mine.map((h) => {
               const on = isChecked(h);
-              const st = habitStreak(h, data.checks);
+              const st = habitStreak(h, data.checks, pauseSet(data.pauses, me.id));
               const weekDone = myChecks.filter((x) => x.habit_id === h.id && x.check_date >= mon && x.check_date <= sun).length;
               return (
                 <li key={h.id} className={'habit' + (on ? ' on' : '')}>
@@ -106,7 +129,13 @@ export default function HabitList({ onAddGoal, onAddTraining }: { onAddGoal: () 
           </ul>
           <div className="hl-foot">
             <span className="muted small">+{RULES.check} per vinkje · +{RULES.goalWeek} per gehaald weekdoel</span>
-            <button className="link small" onClick={onAddGoal}>Doelen beheren</button>
+            <span className="hl-actions">
+              <button className="link small" disabled={!paused && pausesThisWeek >= 2} onClick={togglePause}
+                title={!paused && pausesThisWeek >= 2 ? 'Max. 2 pauzedagen per week' : ''}>
+                {paused ? 'Pauze opheffen' : '🌙 Pauzedag'}
+              </button>
+              <button className="link small" onClick={onAddGoal}>Doelen beheren</button>
+            </span>
           </div>
         </>
       )}

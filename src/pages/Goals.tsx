@@ -3,7 +3,7 @@ import { errMsg, supabase } from '../supabase';
 import { useStore } from '../store';
 import { EMOJIS, HABIT_IDEAS, type Habit } from '../types';
 import { today } from '../dates';
-import { habitActiveOn, habitStreak } from '../points';
+import { habitActiveOn, habitStreak, pauseSet } from '../points';
 import GoalEditor from '../components/GoalEditor';
 
 export default function Goals({ back }: { back: () => void }) {
@@ -55,7 +55,7 @@ export default function Goals({ back }: { back: () => void }) {
       {active.length > 0 && (
         <div className="card list">
           {active.map((h) => {
-            const st = habitStreak(h, data.checks);
+            const st = habitStreak(h, data.checks, pauseSet(data.pauses, me.id));
             return (
               <div key={h.id} className="goal-row">
                 <span className="h-emoji">{h.emoji}</span>

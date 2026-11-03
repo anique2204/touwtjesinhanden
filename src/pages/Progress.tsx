@@ -6,7 +6,7 @@ import { compressImage } from '../image';
 import { today, shortDate } from '../dates';
 import { allPhotoPaths, BUCKET, diff, firstLast, fmt, loadMeasurements, signedUrls } from '../progress';
 
-const PRIVATE_NOTE = '🔒 Dit is alleen voor jou. Niemand anders in de groep kan je foto’s, gewicht of maten zien.';
+const PRIVATE_NOTE = '🔒 Niemand in de groep kan je foto’s, gewicht of maten zien. De beheerder van de app kan technisch bij de opslag, maar kijkt daar niet in.';
 
 export default function Progress({ back }: { back: () => void }) {
   const { me } = useStore();

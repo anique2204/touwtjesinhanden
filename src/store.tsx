@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { supabase } from './supabase';
-import type { Activity, Challenge, Cheer, Comment, Group, Habit, HabitCheck, Kudo, Member, Profile, WeeklyGoal } from './types';
+import type { Activity, Challenge, Cheer, Comment, Group, Habit, HabitCheck, Kudo, Member, Mood, PauseDay, Profile, SharedMood, WeeklyGoal } from './types';
 import { today } from './dates';
 
 export interface GroupData {
@@ -16,6 +16,9 @@ export interface GroupData {
   habits: Habit[];
   checks: HabitCheck[];
   cheers: Cheer[];
+  pauses: PauseDay[];
+  sharedMoods: SharedMood[];   // gedeelde gezichtjes van iedereen
+  myMoods: Mood[];             // je eigen moods, met labels en notitie
 }
 
 interface Ctx {
@@ -44,7 +47,9 @@ async function must<T>(p: PromiseLike<{ data: T | null; error: unknown }>): Prom
 }
 
 export async function loadGroupData(groupId: string): Promise<GroupData> {
-  const [group, members, challenges, activities, kudos, comments, habits, checks, cheers] = await Promise.all([
+  const { data: { session } } = await supabase.auth.getSession();
+  const myId = session?.user.id ?? '';
+  const [group, members, challenges, activities, kudos, comments, habits, checks, cheers, pauses, sharedMoods, myMoods] = await Promise.all([
     must<Group>(supabase.from('groups').select('*').eq('id', groupId).single()),
     must<Member[]>(supabase.from('group_members').select('*').eq('group_id', groupId)),
     must<Challenge[]>(supabase.from('challenges').select('*').eq('group_id', groupId).order('start_date', { ascending: false })),
@@ -57,8 +62,13 @@ export async function loadGroupData(groupId: string): Promise<GroupData> {
     supabase.rpc('group_habits', { gid: groupId }).then(({ data }) => (data ?? []) as Habit[]),
     supabase.from('habit_checks').select('habit_id, group_id, user_id, check_date').eq('group_id', groupId)
       .then(({ data }) => (data ?? []) as HabitCheck[]),
-    supabase.from('cheers').select('group_id, from_user, to_user, day').eq('group_id', groupId)
-      .then(({ data }) => (data ?? []) as Cheer[]),
+    supabase.from('cheers').select('*').eq('group_id', groupId)
+      .then(({ data }) => ((data ?? []) as Cheer[]).map((c) => ({ ...c, kind: c.kind ?? 'highfive' }))),
+    supabase.from('pause_days').select('user_id, group_id, day').eq('group_id', groupId)
+      .then(({ data }) => (data ?? []) as PauseDay[]),
+    supabase.rpc('group_moods', { gid: groupId }).then(({ data }) => (data ?? []) as SharedMood[]),
+    supabase.from('moods').select('*').eq('user_id', myId).eq('group_id', groupId)
+      .then(({ data }) => (data ?? []) as Mood[]),
   ]);
   const ids = members.map((m) => m.user_id);
   const [profiles, goals] = await Promise.all([
@@ -75,7 +85,7 @@ export async function loadGroupData(groupId: string): Promise<GroupData> {
     for (const p of profiles) p.avatar_url = p.avatar_path ? urls[p.avatar_path] ?? null : null;
   }
   return {
-    group, members, challenges, goals, activities, habits, checks, cheers,
+    group, members, challenges, goals, activities, habits, checks, cheers, pauses, sharedMoods, myMoods,
     kudos: kudos.map(({ activity_id, user_id }) => ({ activity_id, user_id })),
     comments: comments.map(({ id, activity_id, user_id, body, created_at }) => ({ id, activity_id, user_id, body, created_at })),
     profiles: Object.fromEntries(profiles.map((p) => [p.id, p])),
@@ -112,6 +122,7 @@ export function StoreProvider(props: {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'comments' }, soon)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'habit_checks', filter: `group_id=eq.${groupId}` }, soon)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'cheers', filter: `group_id=eq.${groupId}` }, soon)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'pause_days', filter: `group_id=eq.${groupId}` }, soon)
       .subscribe();
     const onVis = () => { if (document.visibilityState === 'visible') soon(); };
     document.addEventListener('visibilitychange', onVis);

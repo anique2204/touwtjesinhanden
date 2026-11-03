@@ -44,9 +44,9 @@ export default function Me({ go }: { go: (t: Tab) => void }) {
   const mine = data.activities.filter((a) => a.user_id === me.id);
   const score = useMemo(() => (c ? computeScores({
     challenge: c, memberIds: data.members.map((m) => m.user_id), activities: data.activities,
-    goals: data.goals, habits: data.habits, checks: data.checks,
+    goals: data.goals, habits: data.habits, checks: data.checks, pauses: data.pauses,
   }).find((s) => s.userId === me.id) : undefined), [c, data, me.id]);
-  const streak = activeStreak(me.id, data.checks, data.activities);
+  const streak = activeStreak(me.id, data.checks, data.activities, data.pauses);
   const myChecks = data.checks.filter((x) => x.user_id === me.id).length;
   const goalsCount = data.habits.filter((h) => h.user_id === me.id && !h.archived_on).length;
 
@@ -108,7 +108,8 @@ export default function Me({ go }: { go: (t: Tab) => void }) {
       </div>
 
       <NavCard icon="🎯" title="Mijn doelen" sub={goalsCount ? `${goalsCount} actieve ${goalsCount === 1 ? 'doel' : 'doelen'} · toevoegen of wijzigen` : 'Kies wat je wilt volhouden'} onClick={() => go('goals')} />
-      <NavCard icon="📸" title="Mijn voortgang" sub="Foto’s, gewicht, taille en buikomtrek · 🔒 alleen voor jou" onClick={() => go('progress')} />
+      <NavCard icon="📸" title="Mijn voortgang" sub="Foto’s, gewicht, taille en buikomtrek · 🔒 privé" onClick={() => go('progress')} />
+      <NavCard icon="🌸" title="Cyclus & lichaam" sub="Menstruatie, seks en je ritme · 🔒 privé" onClick={() => go('body')} />
       <NavCard icon="👥" title={data.group.name} sub={`${data.members.length} leden · uitnodigen en challenges`} onClick={() => go('group')} />
 
       {mine.length > 0 && (
