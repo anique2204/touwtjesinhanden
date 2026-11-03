@@ -47,7 +47,8 @@ export default function App() {
     return () => sub.subscription.unsubscribe();
   }, []);
 
-  const userId = session?.user.id;
+  // 'init' = nog aan het laden, 'out' = niet ingelogd, anders het gebruikers-id
+  const authKey = session === undefined ? 'init' : session === null ? 'out' : session.user.id;
 
   const resolve = useCallback(async (s: Session) => {
     try {
@@ -73,7 +74,7 @@ export default function App() {
     setPhase((p) => (p.k === 'ready' && p.session.user.id === session.user.id ? { ...p, session } : p));
     void resolve(session);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userId]);
+  }, [authKey]);
 
   const setMe = useCallback((me: Profile) => {
     setPhase((p) => (p.k === 'ready' ? { ...p, me } : p));
