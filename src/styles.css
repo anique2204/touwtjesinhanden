@@ -330,3 +330,7 @@ textarea { resize: vertical; }
 .sheet-item { display: flex; gap: 14px; align-items: center; text-align: left; background: var(--soft); border: 0; border-radius: 14px; padding: 12px 14px; cursor: pointer; }
 .sheet-item > span { font-size: 24px; }
 .tabbar { z-index: 30; }
+
+/* Training wijzigen: schermvullend over de rest heen */
+.overlay-page { position: fixed; inset: 0; z-index: 40; background: var(--bg); overflow-y: auto; -webkit-overflow-scrolling: touch; }
+.overlay-inner { max-width: 560px; margin: 0 auto; padding: calc(16px + env(safe-area-inset-top)) 16px calc(32px + env(safe-area-inset-bottom)); }

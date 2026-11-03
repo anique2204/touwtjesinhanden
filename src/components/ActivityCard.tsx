@@ -5,6 +5,7 @@ import { SPORTS, type Activity } from '../types';
 import { formatDuration, pace, relativeDay, timeAgo } from '../dates';
 import { RULES } from '../points';
 import Avatar from './Avatar';
+import AddActivity from '../pages/AddActivity';
 
 const urlCache = new Map<string, string>();
 
@@ -33,6 +34,7 @@ export default function ActivityCard({ a }: { a: Activity }) {
   const [text, setText] = useState('');
   const [busy, setBusy] = useState(false);
   const [zoom, setZoom] = useState(false);
+  const [editing, setEditing] = useState(false);
 
   const sport = SPORTS[a.sport];
   const title = a.label?.trim() || sport.label;
@@ -99,6 +101,7 @@ export default function ActivityCard({ a }: { a: Activity }) {
             {kudos.map((k) => data.profiles[k.user_id]?.display_name).filter(Boolean).join(', ')}
           </span>
         )}
+        {mine && <button className="link small" onClick={() => setEditing(true)}>Wijzig</button>}
         {mine && <button className="link danger small" onClick={remove}>Verwijder</button>}
       </footer>
 
@@ -123,6 +126,15 @@ export default function ActivityCard({ a }: { a: Activity }) {
             <input value={text} maxLength={500} onChange={(e) => setText(e.target.value)} placeholder="Reageer…" />
             <button className="btn small" disabled={busy || !text.trim()}>Stuur</button>
           </form>
+        </div>
+      )}
+
+      {editing && (
+        <div className="overlay-page">
+          <div className="overlay-inner">
+            <AddActivity edit={a} editPhotoUrl={photo} onCancel={() => setEditing(false)}
+              onDone={() => { if (a.photo_path) urlCache.delete(a.photo_path); setEditing(false); }} />
+          </div>
         </div>
       )}
 
