@@ -31,9 +31,9 @@ export default function Login({ hasInvite }: { hasInvite: boolean }) {
     <div className="center-page">
       <div className="card login">
         <img src="/icon.svg" alt="" className="logo" />
-        <h1>De touwtjes in handen</h1>
+        <h1>LockedIn</h1>
         <p className="muted">
-          {hasInvite ? 'Je bent uitgenodigd! Log in met je e-mailadres om mee te doen.' : 'Samen sporten, samen volhouden.'}
+          {hasInvite ? 'Je bent uitgenodigd! Log in met je e-mailadres om mee te doen.' : 'Samen je doelen halen. Samen volhouden.'}
         </p>
 
         {!sent ? (

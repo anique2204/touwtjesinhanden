@@ -10,7 +10,7 @@ export default function GroupSetup({ me, inviteCode, onDone }: {
   const [preview, setPreview] = useState<Preview | null | undefined>(undefined);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [name, setName] = useState('De touwtjes in handen');
+  const [name, setName] = useState('LockedIn');
   const [cName, setCName] = useState('November – December 2026');
   const [start, setStart] = useState('2026-11-01');
   const [end, setEnd] = useState('2026-12-31');

@@ -53,7 +53,7 @@ export async function makeProgressPdf(ms: Measurement[], name: string): Promise<
 
   const footer = () => {
     doc.setFontSize(8); doc.setTextColor(...grey);
-    doc.text('Prive document - alleen voor jou. De touwtjes in handen.', M, 290);
+    doc.text('Prive document - alleen voor jou. LockedIn.', M, 290);
     doc.text(`Pagina ${doc.getCurrentPageInfo().pageNumber}`, PW - M, 290, { align: 'right' });
   };
 

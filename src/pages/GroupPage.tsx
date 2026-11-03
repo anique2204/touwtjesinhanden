@@ -45,6 +45,15 @@ export default function GroupPage({ back }: { back: () => void }) {
   }
 
   const t = today();
+  const [renaming, setRenaming] = useState(false);
+  const [gName, setGName] = useState(data.group.name);
+
+  async function rename(e: FormEvent) {
+    e.preventDefault();
+    const { error } = await supabase.from('groups').update({ name: gName.trim() }).eq('id', data.group.id);
+    if (error) return alert(errMsg(error));
+    setRenaming(false); await reload();
+  }
 
   return (
     <div className="stack">
@@ -53,6 +62,27 @@ export default function GroupPage({ back }: { back: () => void }) {
         <h1 className="grow" style={{ textAlign: 'center' }}>{data.group.name}</h1>
         <span style={{ width: 52 }} />
       </header>
+
+      {isAdmin && (
+        <div className="card stack">
+          {!renaming ? (
+            <div className="goal-row">
+              <span className="grow"><span className="muted small">Groepsnaam</span><br /><b>{data.group.name}</b></span>
+              <button className="link small" onClick={() => setRenaming(true)}>Wijzig</button>
+            </div>
+          ) : (
+            <form className="stack" onSubmit={rename}>
+              <label className="field"><span>Groepsnaam</span>
+                <input required maxLength={60} value={gName} onChange={(e) => setGName(e.target.value)} autoFocus />
+              </label>
+              <div className="row2">
+                <button type="button" className="btn ghost" onClick={() => { setRenaming(false); setGName(data.group.name); }}>Annuleer</button>
+                <button className="btn" disabled={!gName.trim()}>Opslaan</button>
+              </div>
+            </form>
+          )}
+        </div>
+      )}
 
       <div className="card stack">
         <h2>Uitnodigen</h2>

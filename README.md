@@ -1,4 +1,4 @@
-# De touwtjes in handen 💪
+# LockedIn 🔒
 
 Sportapp om elkaar accountable te houden. Web-app (PWA): openen via een link en op je beginscherm zetten.
 
