@@ -112,6 +112,16 @@ function GoalForm({ habit, onDone, onCancel }: { habit: Habit | null; onDone: ()
   const { data } = useStore();
   const [title, setTitle] = useState(habit?.title ?? '');
   const [emoji, setEmoji] = useState(habit?.emoji ?? '🎯');
+  const [custom, setCustom] = useState(habit && !EMOJIS.includes(habit.emoji) ? habit.emoji : '');
+
+  /** Pak het laatst getypte teken (één emoji, ook samengestelde zoals 👩‍❤️‍👨). */
+  function pickCustom(v: string) {
+    const Seg = (Intl as unknown as { Segmenter?: new (l: string, o: { granularity: string }) => { segment: (s: string) => Iterable<{ segment: string }> } }).Segmenter;
+    const parts = Seg ? [...new Seg('nl', { granularity: 'grapheme' }).segment(v)].map((x) => x.segment) : Array.from(v);
+    const last = parts.filter((p) => p.trim()).pop() ?? '';
+    setCustom(last);
+    if (last && /\p{Extended_Pictographic}|\p{Regional_Indicator}/u.test(last)) setEmoji(last);
+  }
   const [daily, setDaily] = useState((habit?.per_week ?? 7) >= 7);
   const [perWeek, setPerWeek] = useState(habit && habit.per_week < 7 ? habit.per_week : 3);
   const [priv, setPriv] = useState(habit?.is_private ?? false);
@@ -162,6 +172,11 @@ function GoalForm({ habit, onDone, onCancel }: { habit: Habit | null; onDone: ()
               <button type="button" key={em} className={'emoji-btn' + (emoji === em ? ' on' : '')} onClick={() => setEmoji(em)}>{em}</button>
             ))}
           </div>
+          <div className="own-emoji">
+            <span className="own-emoji-preview">{emoji}</span>
+            <input value={custom} onChange={(e) => pickCustom(e.target.value)} placeholder="Of typ je eigen emoji 😊" aria-label="Eigen emoji" />
+          </div>
+          <span className="muted small">Tik in het vak en kies een emoji via je toetsenbord (🙂-knop of 🌐).</span>
         </div>
         <div className="field">
           <span>Hoe vaak?</span>

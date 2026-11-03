@@ -3,8 +3,9 @@ import { errMsg, supabase } from '../supabase';
 import { useStore } from '../store';
 import { daysBetween, today } from '../dates';
 import { activeStreak, dayStatus, habitActiveOn } from '../points';
-import { CHEER_KINDS, moodEmoji, SPORTS, type CheerKind } from '../types';
+import { CHEER_KINDS, SPORTS, type CheerKind } from '../types';
 import Avatar from './Avatar';
+import MoodIcon from './MoodIcon';
 
 /** Hoe staat iedereen ervoor op een dag, met reacties. Gebruikt op Vandaag en in de kalender. */
 export default function GroupDay({ day, title }: { day: string; title?: string }) {
@@ -53,7 +54,7 @@ export default function GroupDay({ day, title }: { day: string; title?: string }
               <div className="person-top">
                 <span className="avatar-wrap">
                   <Avatar p={p} />
-                  {mood && <span className="mood-badge" title="Mood">{moodEmoji(mood.score)}</span>}
+                  {mood && <span className="mood-badge" title="Mood"><MoodIcon score={mood.score} /></span>}
                 </span>
                 <div className="grow">
                   <div className="name">{p?.display_name}{id === me.id && <span className="muted"> (jij)</span>}</div>

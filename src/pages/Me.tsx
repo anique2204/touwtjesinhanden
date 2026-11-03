@@ -6,6 +6,7 @@ import ColorPicker from '../components/ColorPicker';
 import ActivityCard from '../components/ActivityCard';
 import Avatar from '../components/Avatar';
 import { squareImage } from '../image';
+import PasswordForm from '../components/PasswordForm';
 import type { Tab } from './Shell';
 
 export default function Me({ go }: { go: (t: Tab) => void }) {
@@ -95,6 +96,8 @@ export default function Me({ go }: { go: (t: Tab) => void }) {
           </label>
           <div className="field"><span>Kleur</span><ColorPicker value={color} onChange={setColor} /></div>
           <button className="btn" disabled={busy || !name.trim()} onClick={saveProfile}>Opslaan</button>
+          <hr className="sep" />
+          <PasswordForm />
         </div>
       )}
 

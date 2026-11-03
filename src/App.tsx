@@ -51,6 +51,7 @@ export default function App() {
   const authKey = session === undefined ? 'init' : session === null ? 'out' : session.user.id;
 
   const resolve = useCallback(async (s: Session) => {
+    if (s.user.email) safeSet('lockedin.email', s.user.email);
     try {
       const { data: me, error } = await supabase.from('profiles').select('*').eq('id', s.user.id).maybeSingle();
       if (error) throw error;

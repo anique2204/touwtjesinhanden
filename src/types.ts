@@ -59,7 +59,8 @@ export interface PauseDay { user_id: string; group_id: string; day: string }
 
 export interface Mood { user_id: string; group_id: string; day: string; score: number; tags: string[]; note: string | null; shared: boolean }
 export interface SharedMood { user_id: string; day: string; score: number }
-export const MOODS = [
+// img: optioneel eigen icoontje, bijv. '/moods/1.png' (zet het bestand in public/moods/)
+export const MOODS: { score: number; emoji: string; label: string; img?: string }[] = [
   { score: 1, emoji: '😣', label: 'Zwaar' },
   { score: 2, emoji: '😕', label: 'Matig' },
   { score: 3, emoji: '😐', label: 'Oké' },

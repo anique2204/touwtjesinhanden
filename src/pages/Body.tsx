@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { errMsg, supabase } from '../supabase';
 import { useStore } from '../store';
-import { SYMPTOMS, moodEmoji, type BodyDay, type Flow, type PrivateSettings } from '../types';
+import MoodIcon from '../components/MoodIcon';
+import { SYMPTOMS, type BodyDay, type Flow, type PrivateSettings } from '../types';
 import { addDays, fromISO, mondayOf, relativeDay, shortDate, toISO, today } from '../dates';
 import { cycleInfo, nextPeriod, PHASE_ORDER, PHASES, phaseOn, type Phase } from '../cycle';
 import { dayStatus } from '../points';
@@ -215,7 +216,7 @@ function BodyMain({ settings, days, reload }: { settings: PrivateSettings; days:
                 <span className="cal-n">{fromISO(d).getDate()}</span>
                 <span className="body-marks">
                   {bd?.sex && settings.track_sex && <i>💞</i>}
-                  {mood && <i>{moodEmoji(mood.score)}</i>}
+                  {mood && <i><MoodIcon score={mood.score} /></i>}
                 </span>
               </button>
             );
@@ -245,7 +246,7 @@ function BodyMain({ settings, days, reload }: { settings: PrivateSettings; days:
                 return (
                   <div key={p} className="ins-row">
                     <span className="ins-label">{PHASES[p].emoji} {PHASES[p].label.replace(' fase', '').replace('Rond de ', '')}</span>
-                    <span className="ins-val">{m != null && insights[p].mood.length >= 2 ? `${moodEmoji(Math.round(m))} ${m.toFixed(1)}` : '–'}</span>
+                    <span className="ins-val">{m != null && insights[p].mood.length >= 2 ? <><MoodIcon score={Math.round(m)} /> {m.toFixed(1)}</> : '–'}</span>
                     <span className="ins-bar"><i style={{ width: `${(g ?? 0) * 100}%` }} /></span>
                     <span className="ins-pct">{g != null ? `${Math.round(g * 100)}%` : '–'}</span>
                   </div>

@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { errMsg, supabase } from '../supabase';
 import { useStore } from '../store';
-import { MOOD_TAGS, MOODS, moodEmoji } from '../types';
+import { MOOD_TAGS, MOODS } from '../types';
+import MoodIcon from './MoodIcon';
 import { today } from '../dates';
 
 /** Dagelijkse mood: gezichtje (eventueel delen), labels en notitie altijd privé. */
@@ -39,7 +40,7 @@ export default function MoodCheckin() {
     const m = MOODS.find((x) => x.score === existing.score);
     return (
       <section className="card mood-done">
-        <span className="mood-big">{moodEmoji(existing.score)}</span>
+        <span className="mood-big"><MoodIcon score={existing.score} /></span>
         <div className="grow">
           <b>Vandaag: {m?.label}</b>
           <div className="muted small">
@@ -60,7 +61,7 @@ export default function MoodCheckin() {
       <div className="mood-row">
         {MOODS.map((m) => (
           <button key={m.score} className={'mood-btn' + (score === m.score ? ' on' : '')} onClick={() => pick(m.score)}>
-            <span>{m.emoji}</span><small>{m.label}</small>
+            <span><MoodIcon score={m.score} /></span><small>{m.label}</small>
           </button>
         ))}
       </div>
@@ -77,7 +78,7 @@ export default function MoodCheckin() {
           <label className="share-row">
             <span className="grow">
               <b>Deel mijn gezichtje met de groep</b>
-              <span className="muted small">De groep ziet alleen {moodEmoji(score)}, nooit je labels of notitie.</span>
+              <span className="muted small">De groep ziet alleen <MoodIcon score={score} />, nooit je labels of notitie.</span>
             </span>
             <span className="switch">
               <input type="checkbox" checked={shared} onChange={(e) => setShared(e.target.checked)} />

@@ -18,7 +18,7 @@ export default function GroupPage({ back }: { back: () => void }) {
   const [busy, setBusy] = useState(false);
 
   async function share() {
-    const text = `Doe mee met "${data.group.name}" 💪`;
+    const text = `Doe mee met "${data.group.name}" 💪\n\nTip: open de link in Safari (iPhone) of Chrome (Android), niet in WhatsApp zelf. Zet de app daarna op je beginscherm en stel bij Ik → Bewerk een wachtwoord in, dan blijf je makkelijk ingelogd.`;
     if (navigator.share) {
       try { await navigator.share({ title: data.group.name, text, url: link }); return; } catch { /* geannuleerd */ }
     }
