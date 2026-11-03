@@ -19,7 +19,7 @@ export const SPORTS: Record<Sport, { label: string; emoji: string }> = {
   overig: { label: 'Overig', emoji: '✨' },
 };
 
-export const COLORS = ['#2563eb', '#16a34a', '#dc2626', '#9333ea', '#ea580c', '#0891b2', '#db2777', '#4b5563'];
+export const COLORS = ['#703d57', '#957186', '#402a2c', '#c0768f', '#5b6f8a', '#4f7a6a', '#b0794a', '#8a5a9e'];
 
 export type Pose = 'front' | 'back' | 'left' | 'right';
 export const POSES: { id: Pose; label: string }[] = [

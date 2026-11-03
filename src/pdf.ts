@@ -48,8 +48,8 @@ export async function makeProgressPdf(ms: Measurement[], name: string): Promise<
   const { jsPDF } = await import('jspdf');
   const doc = new jsPDF({ unit: 'mm', format: 'a4' });
   const M = 14, PW = 210, CW = PW - 2 * M;
-  const green: [number, number, number] = [22, 163, 74];
-  const grey: [number, number, number] = [113, 113, 122];
+  const green: [number, number, number] = [112, 61, 87]; // mauve shadow
+  const grey: [number, number, number] = [122, 100, 104];
 
   const footer = () => {
     doc.setFontSize(8); doc.setTextColor(...grey);
@@ -59,18 +59,18 @@ export async function makeProgressPdf(ms: Measurement[], name: string): Promise<
 
   // ---- Kop ----
   doc.setFillColor(...green); doc.rect(0, 0, PW, 4, 'F');
-  doc.setTextColor(24, 24, 27); doc.setFont('helvetica', 'bold'); doc.setFontSize(22);
+  doc.setTextColor(36, 23, 21); doc.setFont('helvetica', 'bold'); doc.setFontSize(22);
   doc.text('Mijn voortgang', M, 20);
   doc.setFont('helvetica', 'normal'); doc.setFontSize(11); doc.setTextColor(...grey);
   doc.text(`${name}  -  gemaakt op ${longDate(today())}`, M, 27);
-  doc.setFillColor(254, 252, 232); doc.setDrawColor(253, 230, 138);
+  doc.setFillColor(246, 238, 241); doc.setDrawColor(217, 184, 196);
   doc.roundedRect(M, 31, CW, 9, 2, 2, 'FD');
-  doc.setFontSize(9.5); doc.setTextColor(113, 63, 18);
+  doc.setFontSize(9.5); doc.setTextColor(64, 42, 44);
   doc.text('Prive: dit overzicht is alleen voor jou. Niemand in de groep kan deze gegevens zien.', M + 3, 36.8);
 
   // ---- Matentabel ----
   let y = 50;
-  doc.setTextColor(24, 24, 27); doc.setFont('helvetica', 'bold'); doc.setFontSize(13);
+  doc.setTextColor(36, 23, 21); doc.setFont('helvetica', 'bold'); doc.setFontSize(13);
   doc.text('Maten', M, y);
   y += 4;
   const cols = [M, M + 46, M + 92, M + 138];
@@ -79,7 +79,7 @@ export async function makeProgressPdf(ms: Measurement[], name: string): Promise<
     { label: 'Taille', key: 'waist_cm', unit: 'cm' },
     { label: 'Buikomtrek', key: 'belly_cm', unit: 'cm' },
   ];
-  doc.setFillColor(241, 241, 238); doc.rect(M, y, CW, 8, 'F');
+  doc.setFillColor(246, 238, 241); doc.rect(M, y, CW, 8, 'F');
   doc.setFontSize(9.5); doc.setTextColor(...grey);
   ['', 'Begin', 'Nu', 'Verschil'].forEach((h, i) => doc.text(h, cols[i] + 2, y + 5.4));
   y += 8;
@@ -87,19 +87,19 @@ export async function makeProgressPdf(ms: Measurement[], name: string): Promise<
   for (const r of rows) {
     const { first, last } = firstLast(ms, r.key);
     const a = first?.[r.key] ?? null, b = last?.[r.key] ?? null;
-    doc.setFont('helvetica', 'bold'); doc.setTextColor(24, 24, 27);
+    doc.setFont('helvetica', 'bold'); doc.setTextColor(36, 23, 21);
     doc.text(r.label, cols[0] + 2, y + 6.5);
     doc.setFont('helvetica', 'normal');
     doc.text(nl(a, r.unit), cols[1] + 2, y + 6.5);
     doc.text(nl(b, r.unit), cols[2] + 2, y + 6.5);
     doc.setFont('helvetica', 'bold');
-    if (a != null && b != null && b !== a) doc.setTextColor(...(b < a ? green : [180, 83, 9] as [number, number, number]));
+    if (a != null && b != null && b !== a) doc.setTextColor(...(b < a ? green : [161, 98, 7] as [number, number, number]));
     doc.text(dd(a, b, r.unit), cols[3] + 2, y + 6.5);
     doc.setFontSize(8); doc.setFont('helvetica', 'normal'); doc.setTextColor(...grey);
     if (first) doc.text(shortDate(first.measured_on), cols[1] + 2, y + 10.5);
     if (last) doc.text(shortDate(last.measured_on), cols[2] + 2, y + 10.5);
     doc.setFontSize(11);
-    doc.setDrawColor(231, 231, 228); doc.line(M, y + 13, M + CW, y + 13);
+    doc.setDrawColor(238, 226, 230); doc.line(M, y + 13, M + CW, y + 13);
     y += 13;
   }
 
@@ -112,7 +112,7 @@ export async function makeProgressPdf(ms: Measurement[], name: string): Promise<
   await Promise.all(paths.map(async (p) => { data[p] = urls[p] ? await toDataUrl(urls[p]) : null; }));
 
   y += 9;
-  doc.setFont('helvetica', 'bold'); doc.setFontSize(13); doc.setTextColor(24, 24, 27);
+  doc.setFont('helvetica', 'bold'); doc.setFontSize(13); doc.setTextColor(36, 23, 21);
   doc.text("Foto's", M, y);
   y += 3;
   const gap = 3, labelW = 12;
@@ -122,7 +122,7 @@ export async function makeProgressPdf(ms: Measurement[], name: string): Promise<
   y += 6;
   const hasLast = pairs.some((p) => p.last);
   for (const row of hasLast ? (['first', 'last'] as const) : (['first'] as const)) {
-    doc.setFont('helvetica', 'bold'); doc.setFontSize(9); doc.setTextColor(24, 24, 27);
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(9); doc.setTextColor(36, 23, 21);
     doc.text(row === 'first' ? 'Begin' : 'Nu', M + labelW - 2, y + ph / 2, { align: 'right', angle: 0 });
     pairs.forEach((p, i) => {
       const x = M + labelW + i * (pw + gap);
@@ -134,7 +134,7 @@ export async function makeProgressPdf(ms: Measurement[], name: string): Promise<
         doc.setFontSize(7.5); doc.setFont('helvetica', 'normal'); doc.setTextColor(...grey);
         doc.text(shortDate(m!.measured_on), x + pw / 2, y + ph + 3.5, { align: 'center' });
       } else {
-        doc.setFillColor(241, 241, 238); doc.rect(x, y, pw, ph, 'F');
+        doc.setFillColor(246, 238, 241); doc.rect(x, y, pw, ph, 'F');
         doc.setFontSize(8); doc.setFont('helvetica', 'normal'); doc.setTextColor(...grey);
         doc.text('geen foto', x + pw / 2, y + ph / 2, { align: 'center' });
       }
@@ -146,12 +146,12 @@ export async function makeProgressPdf(ms: Measurement[], name: string): Promise<
   // ---- Pagina 2: alle metingen ----
   doc.addPage();
   y = 20;
-  doc.setFont('helvetica', 'bold'); doc.setFontSize(16); doc.setTextColor(24, 24, 27);
+  doc.setFont('helvetica', 'bold'); doc.setFontSize(16); doc.setTextColor(36, 23, 21);
   doc.text('Alle metingen', M, y);
   y += 6;
   const c2 = [M, M + 38, M + 66, M + 92, M + 118];
   const head = () => {
-    doc.setFillColor(241, 241, 238); doc.rect(M, y, CW, 8, 'F');
+    doc.setFillColor(246, 238, 241); doc.rect(M, y, CW, 8, 'F');
     doc.setFontSize(9.5); doc.setFont('helvetica', 'normal'); doc.setTextColor(...grey);
     ['Datum', 'Gewicht', 'Taille', 'Buik', 'Notitie'].forEach((h, i) => doc.text(h, c2[i] + 2, y + 5.4));
     y += 8;
@@ -162,13 +162,13 @@ export async function makeProgressPdf(ms: Measurement[], name: string): Promise<
     const note = doc.splitTextToSize(m.note ?? '', CW - (c2[4] - M) - 4) as string[];
     const h = Math.max(8, 4 + note.length * 4.2);
     if (y + h > 280) { footer(); doc.addPage(); y = 20; head(); doc.setFontSize(10); }
-    doc.setTextColor(24, 24, 27); doc.setFont('helvetica', 'normal');
+    doc.setTextColor(36, 23, 21); doc.setFont('helvetica', 'normal');
     doc.text(shortDate(m.measured_on), c2[0] + 2, y + 5.5);
     doc.text(nl(m.weight_kg, 'kg'), c2[1] + 2, y + 5.5);
     doc.text(nl(m.waist_cm, 'cm'), c2[2] + 2, y + 5.5);
     doc.text(nl(m.belly_cm, 'cm'), c2[3] + 2, y + 5.5);
     doc.setTextColor(...grey); doc.text(note, c2[4] + 2, y + 5.5);
-    doc.setDrawColor(231, 231, 228); doc.line(M, y + h, M + CW, y + h);
+    doc.setDrawColor(238, 226, 230); doc.line(M, y + h, M + CW, y + h);
     y += h;
   }
   footer();
