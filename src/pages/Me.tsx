@@ -7,8 +7,9 @@ import GoalEditor from '../components/GoalEditor';
 import ColorPicker from '../components/ColorPicker';
 import ActivityCard from '../components/ActivityCard';
 import Avatar from '../components/Avatar';
+import type { Tab } from './Shell';
 
-export default function Me() {
+export default function Me({ go }: { go: (t: Tab) => void }) {
   const { me, data, currentChallenge: c, setMe, reload, session } = useStore();
   const [name, setName] = useState(me.display_name);
   const [color, setColor] = useState(me.color);
@@ -64,6 +65,15 @@ export default function Me() {
         {totalKm > 0 && <div className="tile"><b>{totalKm.toLocaleString('nl-NL', { maximumFractionDigits: 1 })}</b><span>km</span></div>}
         <div className="tile"><b>{mine.filter((a) => a.is_pr).length}</b><span>PR's</span></div>
       </div>
+
+      <button className="card progress-card" onClick={() => go('progress')}>
+        <span className="pc-icon">📸</span>
+        <span className="grow left">
+          <b>Mijn voortgang</b>
+          <span className="muted small">Foto’s, gewicht, taille en buikomtrek · 🔒 alleen voor jou</span>
+        </span>
+        <span className="muted">›</span>
+      </button>
 
       {c && (
         <div className="card stack">

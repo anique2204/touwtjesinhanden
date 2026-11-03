@@ -20,3 +20,20 @@ export const SPORTS: Record<Sport, { label: string; emoji: string }> = {
 };
 
 export const COLORS = ['#2563eb', '#16a34a', '#dc2626', '#9333ea', '#ea580c', '#0891b2', '#db2777', '#4b5563'];
+
+export type Pose = 'front' | 'back' | 'left' | 'right';
+export const POSES: { id: Pose; label: string }[] = [
+  { id: 'front', label: 'Voor' },
+  { id: 'back', label: 'Achter' },
+  { id: 'left', label: 'Links' },
+  { id: 'right', label: 'Rechts' },
+];
+
+export interface Measurement {
+  id: string; user_id: string; measured_on: string;
+  weight_kg: number | null; waist_cm: number | null; belly_cm: number | null;
+  photo_front: string | null; photo_back: string | null; photo_left: string | null; photo_right: string | null;
+  note: string | null; created_at: string;
+}
+
+export const photoOf = (m: Measurement, pose: Pose): string | null => m[`photo_${pose}`];
