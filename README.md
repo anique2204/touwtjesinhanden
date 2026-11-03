@@ -43,6 +43,10 @@ Open de app, log in, maak de groep aan en deel via **Groep → Deel uitnodigings
 - **iPhone:** open de link in Safari → deelknop → *Zet op beginscherm*
 - **Android:** open de link in Chrome → menu → *App installeren*
 
+## Online zetten
+Elke push naar `main` wordt automatisch door Vercel online gezet. Laat de repository openbaar: bij een privé
+repository blokkeert het gratis Vercel-abonnement wijzigingen die niet van de eigenaar van het project komen.
+
 ## Lokaal ontwikkelen
 ```bash
 cp .env.example .env   # vul je Supabase-gegevens in
