@@ -32,7 +32,7 @@ export default function AddActivity({ onDone }: { onDone: () => void }) {
   const dates = [0, -1, -2].map((n) => addDays(today(), n));
   const mins = parseInt(duration, 10) || 0;
   const km = parseFloat(distance.replace(',', '.'));
-  const pts = mins * RULES.perMinute + (isPr ? RULES.pr : 0);
+  const pts = RULES.training + (isPr ? RULES.pr : 0);
   const recent = [...new Set(data.activities.filter((a) => a.user_id === me.id && a.sport === sport && a.label)
     .map((a) => a.label as string))].slice(0, 5);
 

@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { supabase } from './supabase';
-import type { Activity, Challenge, Comment, Group, Kudo, Member, Profile, WeeklyGoal } from './types';
+import type { Activity, Challenge, Cheer, Comment, Group, Habit, HabitCheck, Kudo, Member, Profile, WeeklyGoal } from './types';
 import { today } from './dates';
 
 export interface GroupData {
@@ -13,6 +13,9 @@ export interface GroupData {
   activities: Activity[];
   kudos: Kudo[];
   comments: Comment[];
+  habits: Habit[];
+  checks: HabitCheck[];
+  cheers: Cheer[];
 }
 
 interface Ctx {
@@ -22,6 +25,7 @@ interface Ctx {
   isAdmin: boolean;
   currentChallenge: Challenge | null;
   reload: () => Promise<void>;
+  patch: (fn: (d: GroupData) => GroupData) => void;
   setMe: (p: Profile) => void;
 }
 
@@ -40,7 +44,7 @@ async function must<T>(p: PromiseLike<{ data: T | null; error: unknown }>): Prom
 }
 
 export async function loadGroupData(groupId: string): Promise<GroupData> {
-  const [group, members, challenges, activities, kudos, comments] = await Promise.all([
+  const [group, members, challenges, activities, kudos, comments, habits, checks, cheers] = await Promise.all([
     must<Group>(supabase.from('groups').select('*').eq('id', groupId).single()),
     must<Member[]>(supabase.from('group_members').select('*').eq('group_id', groupId)),
     must<Challenge[]>(supabase.from('challenges').select('*').eq('group_id', groupId).order('start_date', { ascending: false })),
@@ -49,6 +53,12 @@ export async function loadGroupData(groupId: string): Promise<GroupData> {
     must<Kudo[]>(supabase.from('kudos').select('activity_id, user_id, activities!inner(group_id)').eq('activities.group_id', groupId)),
     must<Comment[]>(supabase.from('comments').select('id, activity_id, user_id, body, created_at, activities!inner(group_id)')
       .eq('activities.group_id', groupId).order('created_at')),
+    // Doelen/vinkjes/high fives: als de database-update nog niet is gedraaid, gewoon leeg laten.
+    supabase.rpc('group_habits', { gid: groupId }).then(({ data }) => (data ?? []) as Habit[]),
+    supabase.from('habit_checks').select('habit_id, group_id, user_id, check_date').eq('group_id', groupId)
+      .then(({ data }) => (data ?? []) as HabitCheck[]),
+    supabase.from('cheers').select('group_id, from_user, to_user, day').eq('group_id', groupId)
+      .then(({ data }) => (data ?? []) as Cheer[]),
   ]);
   const ids = members.map((m) => m.user_id);
   const [profiles, goals] = await Promise.all([
@@ -58,7 +68,7 @@ export async function loadGroupData(groupId: string): Promise<GroupData> {
       : Promise.resolve([] as WeeklyGoal[]),
   ]);
   return {
-    group, members, challenges, goals, activities,
+    group, members, challenges, goals, activities, habits, checks, cheers,
     kudos: kudos.map(({ activity_id, user_id }) => ({ activity_id, user_id })),
     comments: comments.map(({ id, activity_id, user_id, body, created_at }) => ({ id, activity_id, user_id, body, created_at })),
     profiles: Object.fromEntries(profiles.map((p) => [p.id, p])),
@@ -93,6 +103,8 @@ export function StoreProvider(props: {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'activities', filter: `group_id=eq.${groupId}` }, soon)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'kudos' }, soon)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'comments' }, soon)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'habit_checks', filter: `group_id=eq.${groupId}` }, soon)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'cheers', filter: `group_id=eq.${groupId}` }, soon)
       .subscribe();
     const onVis = () => { if (document.visibilityState === 'visible') soon(); };
     document.addEventListener('visibilitychange', onVis);
@@ -106,6 +118,7 @@ export function StoreProvider(props: {
     isAdmin: data.members.some((m) => m.user_id === props.me.id && m.role === 'admin'),
     currentChallenge: pickCurrentChallenge(data.challenges),
     reload,
+    patch: (fn) => setData((d) => fn(d)),
     setMe: props.setMe,
   }), [props.session, props.me, props.setMe, data, reload]);
 

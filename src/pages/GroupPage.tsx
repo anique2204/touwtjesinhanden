@@ -4,7 +4,7 @@ import { useStore } from '../store';
 import { addDays, shortDate, today } from '../dates';
 import Avatar from '../components/Avatar';
 
-export default function GroupPage() {
+export default function GroupPage({ back }: { back: () => void }) {
   const { me, data, isAdmin, reload } = useStore();
   const [copied, setCopied] = useState(false);
   const link = `${window.location.origin}/?join=${data.group.invite_code}`;
@@ -48,7 +48,11 @@ export default function GroupPage() {
 
   return (
     <div className="stack">
-      <header className="page-head"><h1>{data.group.name}</h1></header>
+      <header className="page-head">
+        <button className="link" onClick={back}>‹ Terug</button>
+        <h1 className="grow" style={{ textAlign: 'center' }}>{data.group.name}</h1>
+        <span style={{ width: 52 }} />
+      </header>
 
       <div className="card stack">
         <h2>Uitnodigen</h2>

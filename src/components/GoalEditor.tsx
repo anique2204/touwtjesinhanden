@@ -2,12 +2,11 @@ import { useState } from 'react';
 import { errMsg, supabase } from '../supabase';
 import { useStore } from '../store';
 import type { Challenge } from '../types';
-import { RULES } from '../points';
 
 export default function GoalEditor({ challenge }: { challenge: Challenge }) {
   const { me, data, reload } = useStore();
   const existing = data.goals.find((g) => g.challenge_id === challenge.id && g.user_id === me.id);
-  const [n, setN] = useState(existing?.sessions_per_week ?? RULES.defaultGoal);
+  const [n, setN] = useState(existing?.sessions_per_week ?? 3);
   const [busy, setBusy] = useState(false);
   const [saved, setSaved] = useState(false);
 

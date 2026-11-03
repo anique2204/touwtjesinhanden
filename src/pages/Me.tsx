@@ -1,9 +1,7 @@
 import { useMemo, useState } from 'react';
 import { errMsg, supabase } from '../supabase';
 import { useStore } from '../store';
-import { computeScores, dayStreak } from '../points';
-import { formatDuration } from '../dates';
-import GoalEditor from '../components/GoalEditor';
+import { activeStreak, computeScores } from '../points';
 import ColorPicker from '../components/ColorPicker';
 import ActivityCard from '../components/ActivityCard';
 import Avatar from '../components/Avatar';
@@ -17,13 +15,13 @@ export default function Me({ go }: { go: (t: Tab) => void }) {
   const [busy, setBusy] = useState(false);
 
   const mine = data.activities.filter((a) => a.user_id === me.id);
-  const score = useMemo(
-    () => (c ? computeScores(c, data.members.map((m) => m.user_id), data.activities, data.goals).find((s) => s.userId === me.id) : undefined),
-    [c, data, me.id],
-  );
-  const streak = dayStreak(data.activities, me.id);
-  const totalMin = mine.reduce((s, a) => s + a.duration_min, 0);
-  const totalKm = mine.reduce((s, a) => s + (Number(a.distance_km) || 0), 0);
+  const score = useMemo(() => (c ? computeScores({
+    challenge: c, memberIds: data.members.map((m) => m.user_id), activities: data.activities,
+    goals: data.goals, habits: data.habits, checks: data.checks,
+  }).find((s) => s.userId === me.id) : undefined), [c, data, me.id]);
+  const streak = activeStreak(me.id, data.checks, data.activities);
+  const myChecks = data.checks.filter((x) => x.user_id === me.id).length;
+  const goalsCount = data.habits.filter((h) => h.user_id === me.id && !h.archived_on).length;
 
   async function saveProfile() {
     setBusy(true);
@@ -60,34 +58,34 @@ export default function Me({ go }: { go: (t: Tab) => void }) {
       <div className="tiles">
         <div className="tile"><b>{score?.total ?? 0}</b><span>punten</span></div>
         <div className="tile"><b>🔥 {streak}</b><span>{streak === 1 ? 'dag' : 'dagen'} op rij</span></div>
+        <div className="tile"><b>{score?.perfectWeeks ?? 0}</b><span>perfecte weken</span></div>
+        <div className="tile"><b>{myChecks}</b><span>vinkjes</span></div>
         <div className="tile"><b>{mine.length}</b><span>{mine.length === 1 ? 'training' : 'trainingen'}</span></div>
-        <div className="tile"><b>{formatDuration(totalMin)}</b><span>totaal</span></div>
-        {totalKm > 0 && <div className="tile"><b>{totalKm.toLocaleString('nl-NL', { maximumFractionDigits: 1 })}</b><span>km</span></div>}
         <div className="tile"><b>{mine.filter((a) => a.is_pr).length}</b><span>PR's</span></div>
       </div>
 
-      <button className="card progress-card" onClick={() => go('progress')}>
-        <span className="pc-icon">📸</span>
-        <span className="grow left">
-          <b>Mijn voortgang</b>
-          <span className="muted small">Foto’s, gewicht, taille en buikomtrek · 🔒 alleen voor jou</span>
-        </span>
-        <span className="muted">›</span>
-      </button>
+      <NavCard icon="🎯" title="Mijn doelen" sub={goalsCount ? `${goalsCount} actieve ${goalsCount === 1 ? 'doel' : 'doelen'} · toevoegen of wijzigen` : 'Kies wat je wilt volhouden'} onClick={() => go('goals')} />
+      <NavCard icon="📸" title="Mijn voortgang" sub="Foto’s, gewicht, taille en buikomtrek · 🔒 alleen voor jou" onClick={() => go('progress')} />
+      <NavCard icon="👥" title={data.group.name} sub={`${data.members.length} leden · uitnodigen en challenges`} onClick={() => go('group')} />
 
-      {c && (
-        <div className="card stack">
-          <h2>Mijn weekdoel</h2>
-          <p className="muted small">Voor “{c.name}”. Week = maandag t/m zondag.</p>
-          <GoalEditor challenge={c} />
-        </div>
+      {mine.length > 0 && (
+        <>
+          <h2 className="section-title">Mijn trainingen</h2>
+          {mine.slice(0, 20).map((a) => <ActivityCard key={a.id} a={a} />)}
+        </>
       )}
-
-      <h2>Mijn trainingen</h2>
-      {mine.length === 0 ? <div className="card empty">Nog niets gelogd.</div>
-        : mine.slice(0, 30).map((a) => <ActivityCard key={a.id} a={a} />)}
 
       <button className="btn ghost" onClick={() => supabase.auth.signOut()}>Uitloggen</button>
     </div>
+  );
+}
+
+function NavCard({ icon, title, sub, onClick }: { icon: string; title: string; sub: string; onClick: () => void }) {
+  return (
+    <button className="card progress-card" onClick={onClick}>
+      <span className="pc-icon">{icon}</span>
+      <span className="grow left"><b>{title}</b><span className="muted small">{sub}</span></span>
+      <span className="muted">›</span>
+    </button>
   );
 }

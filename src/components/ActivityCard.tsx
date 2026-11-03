@@ -36,7 +36,7 @@ export default function ActivityCard({ a }: { a: Activity }) {
 
   const sport = SPORTS[a.sport];
   const title = a.label?.trim() || sport.label;
-  const pts = a.duration_min * RULES.perMinute + (a.is_pr ? RULES.pr : 0);
+  const pts = RULES.training + (a.is_pr ? RULES.pr : 0);
 
   async function toggleKudo() {
     if (mine) return;

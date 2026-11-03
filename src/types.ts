@@ -37,3 +37,27 @@ export interface Measurement {
 }
 
 export const photoOf = (m: Measurement, pose: Pose): string | null => m[`photo_${pose}`];
+
+export interface Habit {
+  id: string; user_id: string; title: string | null; emoji: string; per_week: number;
+  is_private: boolean; start_date: string; archived_on: string | null; created_at: string;
+}
+export interface HabitCheck { habit_id: string; group_id: string; user_id: string; check_date: string }
+export interface Cheer { group_id: string; from_user: string; to_user: string; day: string }
+
+export const HABIT_IDEAS: { emoji: string; title: string; per_week: number }[] = [
+  { emoji: '💧', title: '2 liter water', per_week: 7 },
+  { emoji: '👣', title: '10.000 stappen', per_week: 7 },
+  { emoji: '😴', title: 'Voor 23:00 naar bed', per_week: 7 },
+  { emoji: '🍷', title: 'Geen alcohol', per_week: 7 },
+  { emoji: '🍬', title: 'Geen snoep', per_week: 7 },
+  { emoji: '🧘', title: '10 min stretchen', per_week: 7 },
+  { emoji: '🥗', title: 'Groente bij elke maaltijd', per_week: 7 },
+  { emoji: '📵', title: 'Geen telefoon in bed', per_week: 7 },
+  { emoji: '📖', title: '15 min lezen', per_week: 5 },
+  { emoji: '🧠', title: 'Mediteren', per_week: 5 },
+  { emoji: '🚶', title: 'Wandeling buiten', per_week: 4 },
+  { emoji: '🍳', title: 'Zelf koken', per_week: 4 },
+];
+
+export const EMOJIS = ['🎯', '💧', '👣', '😴', '🍷', '🍬', '🧘', '🥗', '📵', '📖', '🧠', '🚶', '🍳', '💪', '🏃', '🚴', '🏊', '🍎', '☕', '🚭', '🙏', '✍️', '🌞', '❤️'];
