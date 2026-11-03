@@ -4,8 +4,7 @@ import { addDays, daysBetween, mondayOf, today } from './dates';
 // ---- Puntenregels (hier aanpassen als de groep andere regels wil) ----
 export const RULES = {
   check: 5,          // elk afgevinkt doel
-  training: 10,      // elke gelogde training
-  pr: 10,            // persoonlijk record
+  training: 5,       // elke gelogde training: net zoveel als een ander doel
   goalWeek: 15,      // per doel dat je in een week haalt
   perfectWeek: 25,   // alle doelen van de week gehaald
   group: 30,         // iedereen had een perfecte week
@@ -61,7 +60,6 @@ export interface Score {
   prs: number;
   checkPts: number;
   trainingPts: number;
-  prPts: number;
   goalBonus: number;
   perfectBonus: number;
   groupBonus: number;
@@ -121,7 +119,6 @@ export function computeScores({ challenge: c, memberIds, activities, goals, habi
       userId: uid, checks: myChecks.length, sessions: mine.length, minutes, km, prs,
       checkPts: myChecks.length * RULES.check,
       trainingPts: mine.length * RULES.training,
-      prPts: prs * RULES.pr,
       goalBonus: goalsMet * RULES.goalWeek,
       perfectBonus: perfectWeeks * RULES.perfectWeek,
       groupBonus: 0, total: 0,
@@ -137,7 +134,7 @@ export function computeScores({ challenge: c, memberIds, activities, goals, habi
   }).length;
   for (const s of scores) {
     s.groupBonus = groupWeeks * RULES.group;
-    s.total = s.checkPts + s.trainingPts + s.prPts + s.goalBonus + s.perfectBonus + s.groupBonus;
+    s.total = s.checkPts + s.trainingPts + s.goalBonus + s.perfectBonus + s.groupBonus;
   }
   return scores.sort((a, b) => b.total - a.total);
 }

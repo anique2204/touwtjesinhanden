@@ -63,7 +63,6 @@ export default function Ranking() {
                   <Line k={`Trainingen (${s.sessions}×)`} v={s.trainingPts} />
                   <Line k={`Weekdoelen gehaald (${s.goalsMet}×)`} v={s.goalBonus} />
                   <Line k={`Perfecte weken (${s.perfectWeeks}×)`} v={s.perfectBonus} />
-                  <Line k={`Persoonlijke records (${s.prs}×)`} v={s.prPts} />
                   <Line k="Groepsbonus" v={s.groupBonus} />
                   <div className="weeks">
                     {s.weeks.map((w) => {
@@ -87,7 +86,7 @@ export default function Ranking() {
         <summary>Hoe werken de punten?</summary>
         <ul>
           <li><b>+{RULES.check}</b> voor elk afgevinkt doel</li>
-          <li><b>+{RULES.training}</b> voor elke training (+{RULES.pr} extra bij een persoonlijk record)</li>
+          <li><b>+{RULES.training}</b> voor elke training, net als elk ander doel</li>
           <li><b>+{RULES.goalWeek}</b> per doel dat je in een week haalt (week = ma t/m zo)</li>
           <li><b>+{RULES.perfectWeek}</b> voor een perfecte week: al je doelen gehaald ⭐</li>
           <li><b>+{RULES.group}</b> voor iedereen als de héle groep een perfecte week heeft</li>
