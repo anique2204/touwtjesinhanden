@@ -334,3 +334,7 @@ textarea { resize: vertical; }
 /* Training wijzigen: schermvullend over de rest heen */
 .overlay-page { position: fixed; inset: 0; z-index: 40; background: var(--bg); overflow-y: auto; -webkit-overflow-scrolling: touch; }
 .overlay-inner { max-width: 560px; margin: 0 auto; padding: calc(16px + env(safe-area-inset-top)) 16px calc(32px + env(safe-area-inset-bottom)); }
+.avatar.img { object-fit: cover; display: inline-block; }
+.photo-row { display: flex; align-items: center; gap: 16px; }
+label.btn { display: inline-block; text-align: center; cursor: pointer; }
+.btn.disabled { opacity: .45; pointer-events: none; }

@@ -67,6 +67,13 @@ export async function loadGroupData(groupId: string): Promise<GroupData> {
       ? must<WeeklyGoal[]>(supabase.from('weekly_goals').select('*').in('challenge_id', challenges.map((c) => c.id)))
       : Promise.resolve([] as WeeklyGoal[]),
   ]);
+  // Profielfoto's: tijdelijke links ophalen (lukt dit niet, dan gewoon de letter tonen)
+  const avatarPaths = profiles.map((p) => p.avatar_path).filter((x): x is string => Boolean(x));
+  if (avatarPaths.length) {
+    const { data: signed } = await supabase.storage.from('avatars').createSignedUrls(avatarPaths, 60 * 60 * 24);
+    const urls = Object.fromEntries((signed ?? []).filter((s) => s.path && s.signedUrl).map((s) => [s.path, s.signedUrl]));
+    for (const p of profiles) p.avatar_url = p.avatar_path ? urls[p.avatar_path] ?? null : null;
+  }
   return {
     group, members, challenges, goals, activities, habits, checks, cheers,
     kudos: kudos.map(({ activity_id, user_id }) => ({ activity_id, user_id })),

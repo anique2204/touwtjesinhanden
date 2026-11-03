@@ -23,3 +23,15 @@ export async function compressImage(file: File, max = 1600, quality = 0.82): Pro
   draw(ctx, canvas.width, canvas.height);
   return new Promise((res) => canvas.toBlob((b) => res(b ?? file), 'image/jpeg', quality));
 }
+
+/** Vierkant bijsnijden (midden) en verkleinen, voor profielfoto's. */
+export async function squareImage(file: File, size = 512, quality = 0.85): Promise<Blob> {
+  const bmp = await createImageBitmap(file);
+  const s = Math.min(bmp.width, bmp.height);
+  const c = document.createElement('canvas');
+  c.width = c.height = size;
+  const ctx = c.getContext('2d');
+  if (!ctx) return file;
+  ctx.drawImage(bmp, (bmp.width - s) / 2, (bmp.height - s) / 2, s, s, 0, 0, size, size);
+  return new Promise((res) => c.toBlob((b) => res(b ?? file), 'image/jpeg', quality));
+}

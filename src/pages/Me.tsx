@@ -5,6 +5,7 @@ import { activeStreak, computeScores } from '../points';
 import ColorPicker from '../components/ColorPicker';
 import ActivityCard from '../components/ActivityCard';
 import Avatar from '../components/Avatar';
+import { squareImage } from '../image';
 import type { Tab } from './Shell';
 
 export default function Me({ go }: { go: (t: Tab) => void }) {
@@ -13,6 +14,32 @@ export default function Me({ go }: { go: (t: Tab) => void }) {
   const [color, setColor] = useState(me.color);
   const [editing, setEditing] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [photoBusy, setPhotoBusy] = useState(false);
+  const myProfile = { ...me, ...data.profiles[me.id], color };
+
+  async function setPhoto(file: File | null) {
+    setPhotoBusy(true);
+    try {
+      const old = data.profiles[me.id]?.avatar_path ?? null;
+      let path: string | null = null;
+      if (file) {
+        const blob = await squareImage(file);
+        path = `${me.id}/${crypto.randomUUID()}.jpg`;
+        const { error: upErr } = await supabase.storage.from('avatars').upload(path, blob, { contentType: 'image/jpeg' });
+        if (upErr) throw upErr;
+      }
+      const { error } = await supabase.from('profiles').update({ avatar_path: path }).eq('id', me.id);
+      if (error) {
+        if (path) await supabase.storage.from('avatars').remove([path]);
+        throw error;
+      }
+      if (old) await supabase.storage.from('avatars').remove([old]);
+      await reload();
+    } catch (e) {
+      alert('Foto opslaan lukte niet: ' + errMsg(e));
+    }
+    setPhotoBusy(false);
+  }
 
   const mine = data.activities.filter((a) => a.user_id === me.id);
   const score = useMemo(() => (c ? computeScores({
@@ -36,7 +63,7 @@ export default function Me({ go }: { go: (t: Tab) => void }) {
     <div className="stack">
       <header className="page-head">
         <div className="me-head">
-          <Avatar p={{ ...me, color }} size={52} />
+          <Avatar p={myProfile} size={52} />
           <div>
             <h1>{me.display_name}</h1>
             <div className="muted small">{session.user.email}</div>
@@ -47,6 +74,22 @@ export default function Me({ go }: { go: (t: Tab) => void }) {
 
       {editing && (
         <div className="card stack">
+          <div className="field">
+            <span>Profielfoto <span className="muted">(zichtbaar voor je groep)</span></span>
+            <div className="photo-row">
+              <Avatar p={myProfile} size={72} />
+              <div className="stack" style={{ gap: 6 }}>
+                <label className={'btn small' + (photoBusy ? ' disabled' : '')}>
+                  {photoBusy ? 'Bezig…' : myProfile.avatar_path ? '📷 Andere foto' : '📷 Kies een foto'}
+                  <input type="file" accept="image/*" hidden disabled={photoBusy}
+                    onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ''; if (f) void setPhoto(f); }} />
+                </label>
+                {myProfile.avatar_path && !photoBusy && (
+                  <button className="link small danger" onClick={() => setPhoto(null)}>Foto weghalen</button>
+                )}
+              </div>
+            </div>
+          </div>
           <label className="field"><span>Naam</span>
             <input value={name} maxLength={40} onChange={(e) => setName(e.target.value)} />
           </label>

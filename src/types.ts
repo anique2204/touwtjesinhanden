@@ -1,6 +1,10 @@
 export type Sport = 'hardlopen' | 'kracht' | 'overig';
 
-export interface Profile { id: string; display_name: string; color: string }
+export interface Profile {
+  id: string; display_name: string; color: string;
+  avatar_path?: string | null;
+  avatar_url?: string | null;   // tijdelijke link, wordt door de app ingevuld
+}
 export interface Group { id: string; name: string; invite_code: string; max_members: number; created_by: string }
 export interface Member { group_id: string; user_id: string; role: 'admin' | 'member'; joined_at: string }
 export interface Challenge { id: string; group_id: string; name: string; start_date: string; end_date: string }
