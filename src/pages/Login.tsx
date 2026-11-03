@@ -47,8 +47,10 @@ export default function Login({ hasInvite }: { hasInvite: boolean }) {
         ) : (
           <form onSubmit={verify} className="stack">
             <p>
-              Check je mail op <b>{email}</b>. Klik op de link, <b>of</b> vul hieronder de code uit de mail in
-              (handig als je de app vanaf je beginscherm gebruikt).
+              📬 Check je mail op <b>{email}</b> en klik op de link. Niets ontvangen? Kijk ook even in je spam.
+            </p>
+            <p className="muted small">
+              Staat er een code in de mail? Dan kun je die hieronder invullen.
             </p>
             <label className="field">
               <span>Code uit de mail</span>
