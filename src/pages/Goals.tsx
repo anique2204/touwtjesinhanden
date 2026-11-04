@@ -47,7 +47,7 @@ export default function Goals({ back }: { back: () => void }) {
       </header>
 
       <p className="muted small">
-        Kleine, haalbare doelen werken het best. Begin met 3 à 4, je kunt er altijd meer bijzetten. 🌱
+        Kies 3 à 5 doelen die je nu nog <b>niet</b> vanzelf doet. Met minder dan 3 doelen verdien je naar verhouding minder punten. 🌱
       </p>
 
       <button className="btn big" onClick={() => setEditing('new')}>＋ Nieuw doel</button>

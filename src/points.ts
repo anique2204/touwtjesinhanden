@@ -2,13 +2,18 @@ import type { Activity, Challenge, Habit, HabitCheck, PauseDay, WeeklyGoal } fro
 import { addDays, daysBetween, mondayOf, today } from './dates';
 
 // ---- Puntenregels (hier aanpassen als de groep andere regels wil) ----
+// Eerlijk voor iedereen: je punten hangen af van hoe TROUW je bent aan je eigen doelen,
+// niet van hoeveel doelen je hebt. Korte weken (begin/eind challenge) tellen naar verhouding.
 export const RULES = {
-  check: 5,          // elk afgevinkt doel
-  training: 5,       // elke gelogde training: net zoveel als een ander doel
-  goalWeek: 15,      // per doel dat je in een week haalt
-  perfectWeek: 25,   // alle doelen van de week gehaald
+  week: 70,          // max per week (± 10 per dag) bij 100% van je doelen
+  perfectWeek: 20,   // extra als je ál je doelen van de week haalt
   group: 30,         // iedereen had een perfecte week
+  minGoals: 3,       // met minder doelen verdien je naar verhouding minder (1 doel = ⅓)
+  launchDate: '2026-11-05', // dag waarop de melding over dit puntensysteem verschijnt
 };
+
+/** Factor voor het aantal doelen: 1 doel = ⅓, 2 = ⅔, 3 of meer = volledig. */
+export const goalFactor = (n: number) => Math.min(n, RULES.minGoals) / RULES.minGoals;
 
 export interface Week {
   start: string;        // eerste dag binnen de challenge
@@ -60,7 +65,12 @@ function activeDays(h: Habit, start: string, end: string): { from: string; to: s
 }
 
 export interface GoalWeek { kind: 'habit' | 'training'; id: string; label: string; emoji: string; done: number; required: number; met: boolean }
-export interface WeekResult { week: Week; goals: GoalWeek[]; perfect: boolean }
+export interface WeekResult {
+  week: Week; goals: GoalWeek[]; perfect: boolean;
+  pct: number;      // gemiddelde voortgang over je doelen (0–1)
+  pts: number;      // trouwpunten deze week
+  bonus: number;    // perfecte-week-bonus
+}
 
 export interface Score {
   userId: string;
@@ -69,9 +79,7 @@ export interface Score {
   minutes: number;
   km: number;
   prs: number;
-  checkPts: number;
-  trainingPts: number;
-  goalBonus: number;
+  weekPts: number;      // trouwpunten (alle weken samen)
   perfectBonus: number;
   groupBonus: number;
   total: number;
@@ -122,7 +130,14 @@ export function computeScores({ challenge: c, memberIds, activities, goals, habi
         const req = required(h.per_week, eff);
         gs.push({ kind: 'habit', id: h.id, label: h.title ?? 'Privé doel', emoji: h.emoji, done, required: req, met: done >= req });
       }
-      return { week: w, goals: gs, perfect: gs.length > 0 && gs.every((g) => g.met) };
+      const perfect = gs.length > 0 && gs.every((g) => g.met);
+      const pct = gs.length ? gs.reduce((a, g) => a + Math.min(g.done, g.required) / g.required, 0) / gs.length : 0;
+      const scale = (w.days / 7) * goalFactor(gs.length);
+      return {
+        week: w, goals: gs, perfect, pct,
+        pts: Math.round(RULES.week * pct * scale),
+        bonus: perfect ? Math.round(RULES.perfectWeek * scale) : 0,
+      };
     });
 
     const goalsMet = weekResults.reduce((s, r) => s + r.goals.filter((g) => g.met).length, 0);
@@ -133,10 +148,8 @@ export function computeScores({ challenge: c, memberIds, activities, goals, habi
 
     return {
       userId: uid, checks: myChecks.length, sessions: mine.length, minutes, km, prs,
-      checkPts: myChecks.length * RULES.check,
-      trainingPts: mine.length * RULES.training,
-      goalBonus: goalsMet * RULES.goalWeek,
-      perfectBonus: perfectWeeks * RULES.perfectWeek,
+      weekPts: weekResults.reduce((a, r) => a + r.pts, 0),
+      perfectBonus: weekResults.reduce((a, r) => a + r.bonus, 0),
       groupBonus: 0, total: 0,
       weeks: weekResults, perfectWeeks, goalsMet,
       thisWeek: weekResults.find((r) => r.week.status === 'current') ?? null,
@@ -144,13 +157,14 @@ export function computeScores({ challenge: c, memberIds, activities, goals, habi
   });
 
   // Groepsbonus: elke week waarin iedereen (met doelen) een perfecte week had
-  const groupWeeks = weeks.filter((_, i) => {
+  const groupPts = weeks.reduce((sum, w, i) => {
     const withGoals = scores.filter((s) => s.weeks[i].goals.length > 0);
-    return withGoals.length > 1 && withGoals.length === scores.length && withGoals.every((s) => s.weeks[i].perfect);
-  }).length;
+    const all = withGoals.length > 1 && withGoals.length === scores.length && withGoals.every((s) => s.weeks[i].perfect);
+    return sum + (all ? Math.round(RULES.group * (w.days / 7)) : 0);
+  }, 0);
   for (const s of scores) {
-    s.groupBonus = groupWeeks * RULES.group;
-    s.total = s.checkPts + s.trainingPts + s.goalBonus + s.perfectBonus + s.groupBonus;
+    s.groupBonus = groupPts;
+    s.total = s.weekPts + s.perfectBonus + s.groupBonus;
   }
   return scores.sort((a, b) => b.total - a.total);
 }

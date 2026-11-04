@@ -4,7 +4,6 @@ import { useStore } from '../store';
 import { SPORTS, type Activity, type Sport } from '../types';
 import { addDays, relativeDay, today } from '../dates';
 import { compressImage } from '../image';
-import { RULES } from '../points';
 
 const DURATIONS = [20, 30, 45, 60, 90];
 
@@ -39,7 +38,6 @@ export default function AddActivity({ onDone, onCancel, edit, editPhotoUrl }: {
   const dates = dateLocked ? [edit!.activity_date] : recentDates;
   const mins = parseInt(duration, 10) || 0;
   const km = parseFloat(distance.replace(',', '.'));
-  const pts = RULES.training;
   const recent = [...new Set(data.activities.filter((a) => a.user_id === me.id && a.sport === sport && a.label)
     .map((a) => a.label as string))].slice(0, 5);
 
@@ -170,7 +168,7 @@ export default function AddActivity({ onDone, onCancel, edit, editPhotoUrl }: {
 
       {error && <p className="error">{error}</p>}
       <button className="btn big" disabled={busy}>
-        {busy ? 'Opslaan…' : edit ? 'Wijzigingen opslaan' : `Opslaan${pts ? ` · +${pts} punten` : ''}`}
+        {busy ? 'Opslaan…' : edit ? 'Wijzigingen opslaan' : 'Opslaan'}
       </button>
     </form>
   );

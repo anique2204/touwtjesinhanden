@@ -59,9 +59,7 @@ export default function Ranking() {
               )}
               {isOpen && (
                 <div className="breakdown">
-                  <Line k={`Vinkjes (${s.checks}×)`} v={s.checkPts} />
-                  <Line k={`Trainingen (${s.sessions}×)`} v={s.trainingPts} />
-                  <Line k={`Weekdoelen gehaald (${s.goalsMet}×)`} v={s.goalBonus} />
+                  <Line k="Trouw aan je doelen" v={s.weekPts} />
                   <Line k={`Perfecte weken (${s.perfectWeeks}×)`} v={s.perfectBonus} />
                   <Line k="Groepsbonus" v={s.groupBonus} />
                   <div className="weeks">
@@ -69,8 +67,8 @@ export default function Ranking() {
                       const met = w.goals.filter((g) => g.met).length;
                       return (
                         <span key={w.week.start} className={'wk' + (w.perfect ? ' met' : w.week.status === 'current' ? ' cur' : '')}
-                          title={`Week van ${shortDate(w.week.start)}: ${met}/${w.goals.length} doelen`}>
-                          {w.perfect ? '⭐' : `${met}/${w.goals.length}`}
+                          title={`Week van ${shortDate(w.week.start)}: ${met}/${w.goals.length} doelen gehaald, ${w.pts + w.bonus} punten`}>
+                          {w.perfect ? '⭐' : ''}{Math.round(w.pct * 100)}%
                         </span>
                       );
                     })}
@@ -85,12 +83,14 @@ export default function Ranking() {
       <details className="card rules">
         <summary>Hoe werken de punten?</summary>
         <ul>
-          <li><b>+{RULES.check}</b> voor elk afgevinkt doel</li>
-          <li><b>+{RULES.training}</b> voor elke training, net als elk ander doel</li>
-          <li><b>+{RULES.goalWeek}</b> per doel dat je in een week haalt (week = ma t/m zo)</li>
+          <li>Het gaat om <b>hoe trouw je bent aan je eigen doelen</b>, niet om hoeveel doelen je hebt.</li>
+          <li>Per week verdien je max. <b>{RULES.week}</b> punten (± 10 per dag): het percentage van je doelen dat je haalt. Een dagdoel 5 van de 7 keer = 71%, een doel van 3× per week 3 van de 3 keer = 100%. Daarvan het gemiddelde.</li>
+          <li>Heb je minder dan {RULES.minGoals} doelen, dan verdien je naar verhouding minder (1 doel = ⅓, 2 doelen = ⅔).</li>
           <li><b>+{RULES.perfectWeek}</b> voor een perfecte week: al je doelen gehaald ⭐</li>
           <li><b>+{RULES.group}</b> voor iedereen als de héle groep een perfecte week heeft</li>
-          <li>Begin je halverwege de week met een doel, dan telt die week naar verhouding</li>
+          <li>Trainen telt mee als één doel (je trainingsdoel per week).</li>
+          <li>Pauzedagen verlagen je weekdoelen naar verhouding. Korte weken aan het begin en eind tellen naar verhouding.</li>
+          <li>Tip: kies doelen die je nu nog <i>niet</i> vanzelf doet. 💪</li>
         </ul>
       </details>
     </div>

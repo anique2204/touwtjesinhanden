@@ -4,6 +4,7 @@ import { computeScores } from '../points';
 import { daysBetween, shortDate, today } from '../dates';
 import HabitList from '../components/HabitList';
 import MoodCheckin from '../components/MoodCheckin';
+import Announcement from '../components/Announcement';
 import GroupDay from '../components/GroupDay';
 import ActivityCard from '../components/ActivityCard';
 import type { Tab } from './Shell';
@@ -49,6 +50,8 @@ export default function Today({ go }: { go: (t: Tab) => void }) {
           </span>
         </div>
       )}
+
+      <Announcement onMore={() => go('ranking')} />
 
       <MoodCheckin />
 

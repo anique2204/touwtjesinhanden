@@ -3,7 +3,7 @@ import { errMsg, supabase } from '../supabase';
 import { useStore } from '../store';
 import type { Habit } from '../types';
 import { addDays, mondayOf, relativeDay, today } from '../dates';
-import { dayStatus, habitActiveOn, habitStreak, pauseSet, required, RULES } from '../points';
+import { dayStatus, habitActiveOn, habitStreak, pauseSet, required } from '../points';
 
 const CHEERS_ALL = ['Alles gedaan, wat goed! 🎉', 'Topdag! Alles afgevinkt 🌟', 'Je hebt het helemaal in handen 💪', 'Yes! Alles binnen 🙌'];
 
@@ -128,7 +128,7 @@ export default function HabitList({ onAddGoal, onAddTraining }: { onAddGoal: () 
             )}
           </ul>
           <div className="hl-foot">
-            <span className="muted small">+{RULES.check} per vinkje · +{RULES.goalWeek} per gehaald weekdoel</span>
+            <span className="muted small">Punten = hoe trouw je bent aan je doelen</span>
             <span className="hl-actions">
               <button className="link small" disabled={!paused && pausesThisWeek >= 2} onClick={togglePause}
                 title={!paused && pausesThisWeek >= 2 ? 'Max. 2 pauzedagen per week' : ''}>

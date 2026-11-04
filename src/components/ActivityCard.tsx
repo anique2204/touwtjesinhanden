@@ -3,7 +3,6 @@ import { errMsg, supabase } from '../supabase';
 import { useStore } from '../store';
 import { SPORTS, type Activity } from '../types';
 import { formatDuration, pace, relativeDay, timeAgo } from '../dates';
-import { RULES } from '../points';
 import Avatar from './Avatar';
 import AddActivity from '../pages/AddActivity';
 
@@ -38,7 +37,6 @@ export default function ActivityCard({ a }: { a: Activity }) {
 
   const sport = SPORTS[a.sport];
   const title = a.label?.trim() || sport.label;
-  const pts = RULES.training;
 
   async function toggleKudo() {
     if (mine) return;
@@ -73,7 +71,6 @@ export default function ActivityCard({ a }: { a: Activity }) {
           <div className="name">{p?.display_name ?? 'Onbekend'}</div>
           <div className="muted small">{relativeDay(a.activity_date)} · {timeAgo(a.created_at)}</div>
         </div>
-        <span className="pts">+{pts}</span>
       </header>
 
       <h3 className="act-title">{sport.emoji} {title} {a.is_pr && <span className="badge pr">🏆 PR</span>}</h3>
