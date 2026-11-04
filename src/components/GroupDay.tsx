@@ -3,7 +3,7 @@ import { errMsg, supabase } from '../supabase';
 import { useStore } from '../store';
 import { daysBetween, today } from '../dates';
 import { activeStreak, dayStatus, habitActiveOn } from '../points';
-import { CHEER_KINDS, SPORTS, type CheerKind } from '../types';
+import { CHEER_KINDS, difficultyOf, SPORTS, type CheerKind } from '../types';
 import Avatar from './Avatar';
 import MoodIcon from './MoodIcon';
 
@@ -71,8 +71,8 @@ export default function GroupDay({ day, title }: { day: string; title?: string }
               {(habits.length > 0 || trainings.length > 0) && (
                 <div className="chips-row">
                   {habits.map((h) => (
-                    <span key={h.id} className={'hchip' + (checked.has(h.id) ? ' on' : '')} title={h.title ?? 'Privé doel'}>
-                      {h.emoji}<span className="hchip-t">{h.title ?? 'privé'}</span>
+                    <span key={h.id} className={'hchip' + (checked.has(h.id) ? ' on' : '')} title={`${h.title ?? 'Privé doel'} · ${difficultyOf(h.difficulty).label}`}>
+                      {h.emoji}<span className="hchip-t">{h.title ?? 'privé'}</span><span className="diff">{difficultyOf(h.difficulty).icon}</span>
                     </span>
                   ))}
                   {trainings.map((a) => (

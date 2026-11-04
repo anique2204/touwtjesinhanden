@@ -14,6 +14,7 @@ export default function Progress({ back }: { back: () => void }) {
   const [urls, setUrls] = useState<Record<string, string>>({});
   const [error, setError] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
+  const [editing, setEditing] = useState<Measurement | null>(null);
   const [pose, setPose] = useState<Pose>('front');
   const [pdf, setPdf] = useState<{ blob: Blob; name: string } | null>(null);
   const [pdfBusy, setPdfBusy] = useState(false);
@@ -58,6 +59,10 @@ export default function Progress({ back }: { back: () => void }) {
 
   if (adding) {
     return <NewMeasurement onCancel={() => setAdding(false)} onSaved={async () => { setAdding(false); setPdf(null); await load(); }} />;
+  }
+  if (editing) {
+    return <NewMeasurement edit={editing} urls={urls} onCancel={() => setEditing(null)}
+      onSaved={async () => { setEditing(null); setPdf(null); await load(); }} />;
   }
 
   const w = ms ? firstLast(ms, 'weight_kg') : null;
@@ -142,7 +147,10 @@ export default function Progress({ back }: { back: () => void }) {
             <div key={m.id} className="card stack">
               <div className="m-head">
                 <b>{shortDate(m.measured_on)}</b>
-                <button className="link danger small" onClick={() => remove(m)}>Verwijder</button>
+                <span className="hl-actions">
+                  <button className="link small" onClick={() => { setEditing(m); window.scrollTo(0, 0); }}>Wijzig</button>
+                  <button className="link danger small" onClick={() => remove(m)}>Verwijder</button>
+                </span>
               </div>
               <div className="stats">
                 <div><b>{fmt(m.weight_kg, 'kg')}</b><span>gewicht</span></div>
@@ -178,15 +186,19 @@ function Row({ label, a, b, d, good, bad }: { label: string; a: string; b: strin
   );
 }
 
-function NewMeasurement({ onCancel, onSaved }: { onCancel: () => void; onSaved: () => void }) {
+function NewMeasurement({ onCancel, onSaved, edit, urls = {} }: {
+  onCancel: () => void; onSaved: () => void; edit?: Measurement; urls?: Record<string, string>;
+}) {
   const { me } = useStore();
-  const [date, setDate] = useState(today());
-  const [weight, setWeight] = useState('');
-  const [waist, setWaist] = useState('');
-  const [belly, setBelly] = useState('');
-  const [note, setNote] = useState('');
+  const str = (n: number | null | undefined) => (n == null ? '' : String(n).replace('.', ','));
+  const [date, setDate] = useState(edit?.measured_on ?? today());
+  const [weight, setWeight] = useState(str(edit?.weight_kg));
+  const [waist, setWaist] = useState(str(edit?.waist_cm));
+  const [belly, setBelly] = useState(str(edit?.belly_cm));
+  const [note, setNote] = useState(edit?.note ?? '');
   const [files, setFiles] = useState<Partial<Record<Pose, File>>>({});
   const [previews, setPreviews] = useState<Partial<Record<Pose, string>>>({});
+  const [removed, setRemoved] = useState<Partial<Record<Pose, boolean>>>({});
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -194,40 +206,57 @@ function NewMeasurement({ onCancel, onSaved }: { onCancel: () => void; onSaved: 
 
   const num = (s: string) => { const n = parseFloat(s.replace(',', '.')); return Number.isFinite(n) ? n : null; };
   const clean = (s: string) => s.replace(/[^\d.,]/g, '');
+  const oldPath = (p: Pose) => (edit ? photoOf(edit, p) : null);
+  /** Wat er nu in het vakje staat: nieuwe foto, bestaande foto, of niets. */
+  const shown = (p: Pose) => previews[p] ?? (!removed[p] && oldPath(p) ? urls[oldPath(p)!] ?? null : null);
 
   function pick(p: Pose, f: File | null) {
     setFiles((x) => ({ ...x, [p]: f ?? undefined }));
     setPreviews((x) => ({ ...x, [p]: f ? URL.createObjectURL(f) : undefined }));
+    if (f) setRemoved((x) => ({ ...x, [p]: false }));
+  }
+  function removePhoto(p: Pose) {
+    setFiles((x) => ({ ...x, [p]: undefined }));
+    setPreviews((x) => ({ ...x, [p]: undefined }));
+    setRemoved((x) => ({ ...x, [p]: true }));
   }
 
   async function save(e: FormEvent) {
     e.preventDefault();
     const w = num(weight), t = num(waist), b = num(belly);
-    if (w == null && t == null && b == null && !Object.values(files).some(Boolean)) {
+    const anyPhoto = POSES.some((p) => files[p.id] || (!removed[p.id] && oldPath(p.id)));
+    if (w == null && t == null && b == null && !anyPhoto) {
       setError('Vul minstens één maat in of voeg een foto toe.'); return;
     }
     setError(null);
-    const id = crypto.randomUUID();
+    const id = edit?.id ?? crypto.randomUUID();
     const uploaded: string[] = [];
+    const toDelete: string[] = [];
     try {
-      const photo: Partial<Record<`photo_${Pose}`, string>> = {};
+      const photo: Partial<Record<`photo_${Pose}`, string | null>> = {};
       let i = 0;
       const todo = POSES.filter((p) => files[p.id]);
       for (const p of todo) {
         i += 1;
         setBusy(`Foto ${i} van ${todo.length} uploaden…`);
         const blob = await compressImage(files[p.id]!);
-        const path = `${me.id}/${id}/${p.id}.jpg`;
-        const { error: upErr } = await supabase.storage.from(BUCKET).upload(path, blob, { contentType: 'image/jpeg', upsert: true });
+        const path = `${me.id}/${id}/${p.id}-${crypto.randomUUID().slice(0, 8)}.jpg`;
+        const { error: upErr } = await supabase.storage.from(BUCKET).upload(path, blob, { contentType: 'image/jpeg' });
         if (upErr) throw upErr;
         uploaded.push(path);
         photo[`photo_${p.id}`] = path;
+        if (oldPath(p.id)) toDelete.push(oldPath(p.id)!);
+      }
+      for (const p of POSES) {
+        if (removed[p.id] && !files[p.id] && oldPath(p.id)) { photo[`photo_${p.id}`] = null; toDelete.push(oldPath(p.id)!); }
       }
       setBusy('Opslaan…');
-      const { error: insErr } = await supabase.from('measurements').insert({
-        id, measured_on: date, weight_kg: w, waist_cm: t, belly_cm: b, note: note.trim() || null, ...photo,
-      });
+      const fields = { measured_on: date, weight_kg: w, waist_cm: t, belly_cm: b, note: note.trim() || null, ...photo };
+      const { error: insErr } = edit
+        ? await supabase.from('measurements').update(fields).eq('id', id)
+        : await supabase.from('measurements').insert({ id, ...fields });
       if (insErr) throw insErr;
+      if (toDelete.length) await supabase.storage.from(BUCKET).remove(toDelete);
       onSaved();
     } catch (err) {
       if (uploaded.length) await supabase.storage.from(BUCKET).remove(uploaded);
@@ -240,7 +269,7 @@ function NewMeasurement({ onCancel, onSaved }: { onCancel: () => void; onSaved: 
     <form className="stack" onSubmit={save}>
       <header className="page-head">
         <button type="button" className="link" onClick={onCancel}>‹ Annuleer</button>
-        <h1 className="grow" style={{ textAlign: 'center' }}>Nieuwe meting</h1>
+        <h1 className="grow" style={{ textAlign: 'center' }}>{edit ? 'Meting wijzigen' : 'Nieuwe meting'}</h1>
         <span style={{ width: 70 }} />
       </header>
 
@@ -279,16 +308,17 @@ function NewMeasurement({ onCancel, onSaved }: { onCancel: () => void; onSaved: 
         </p>
         <div className="pose-grid">
           {POSES.map((p) => (
-            <label key={p.id} className={'pose' + (previews[p.id] ? ' has' : '')}>
-              {previews[p.id] ? <img src={previews[p.id]} alt="" /> : <span className="pose-icon">📷</span>}
-              <span className="pose-label">{p.label}</span>
-              <input type="file" accept="image/*" hidden onChange={(e) => pick(p.id, e.target.files?.[0] ?? null)} />
-            </label>
+            <div key={p.id} className="pose-wrap">
+              <label className={'pose' + (shown(p.id) ? ' has' : '')}>
+                {shown(p.id) ? <img src={shown(p.id)!} alt="" /> : <span className="pose-icon">📷</span>}
+                <span className="pose-label">{p.label}</span>
+                <input type="file" accept="image/*" hidden onChange={(e) => { pick(p.id, e.target.files?.[0] ?? null); e.target.value = ''; }} />
+              </label>
+              {shown(p.id) && <button type="button" className="pose-x" aria-label={`Foto ${p.label} weghalen`} onClick={() => removePhoto(p.id)}>×</button>}
+            </div>
           ))}
         </div>
-        {Object.values(files).some(Boolean) && (
-          <button type="button" className="link small" onClick={() => { setFiles({}); setPreviews({}); }}>Foto’s weghalen</button>
-        )}
+        <p className="muted small">Tik op een vakje om een foto te kiezen of te vervangen, en op × om hem weg te halen.</p>
       </div>
 
       <div className="card">
@@ -298,7 +328,7 @@ function NewMeasurement({ onCancel, onSaved }: { onCancel: () => void; onSaved: 
       </div>
 
       {error && <p className="error">{error}</p>}
-      <button className="btn big" disabled={Boolean(busy)}>{busy ?? 'Meting opslaan'}</button>
+      <button className="btn big" disabled={Boolean(busy)}>{busy ?? (edit ? 'Wijzigingen opslaan' : 'Meting opslaan')}</button>
     </form>
   );
 }

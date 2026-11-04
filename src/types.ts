@@ -42,7 +42,16 @@ export interface Measurement {
 
 export const photoOf = (m: Measurement, pose: Pose): string | null => m[`photo_${pose}`];
 
+export type Difficulty = 'makkelijk' | 'normaal' | 'moeilijk';
+export const DIFFICULTIES: { id: Difficulty; label: string; icon: string; weight: number }[] = [
+  { id: 'makkelijk', label: 'Makkelijk', icon: '🌱', weight: 0.5 },
+  { id: 'normaal', label: 'Gemiddeld', icon: '💪', weight: 1 },
+  { id: 'moeilijk', label: 'Moeilijk', icon: '🔥', weight: 1.5 },
+];
+export const difficultyOf = (d?: string | null) => DIFFICULTIES.find((x) => x.id === d) ?? DIFFICULTIES[1];
+
 export interface Habit {
+  difficulty?: Difficulty;
   id: string; user_id: string; title: string | null; emoji: string; per_week: number;
   is_private: boolean; start_date: string; archived_on: string | null; created_at: string;
 }

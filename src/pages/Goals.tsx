@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import { errMsg, supabase } from '../supabase';
 import { useStore } from '../store';
-import { EMOJIS, HABIT_IDEAS, type Habit } from '../types';
+import { DIFFICULTIES, difficultyOf, EMOJIS, HABIT_IDEAS, type Difficulty, type Habit } from '../types';
 import { today } from '../dates';
 import { habitActiveOn, habitStreak, pauseSet } from '../points';
 import GoalEditor from '../components/GoalEditor';
@@ -62,7 +62,7 @@ export default function Goals({ back }: { back: () => void }) {
                 <div className="grow">
                   <div className="name">{h.title} {h.is_private && <span className="lock">🔒</span>}</div>
                   <div className="muted small">
-                    {h.per_week >= 7 ? 'Elke dag' : `${h.per_week}× per week`}
+                    {difficultyOf(h.difficulty).icon} {h.per_week >= 7 ? 'Elke dag' : `${h.per_week}× per week`}
                     {h.is_private ? ' · privé' : ' · zichtbaar voor de groep'}
                     {st.n > 0 && ` · 🔥 ${st.n}`}
                   </div>
@@ -125,16 +125,23 @@ function GoalForm({ habit, onDone, onCancel }: { habit: Habit | null; onDone: ()
   const [daily, setDaily] = useState((habit?.per_week ?? 7) >= 7);
   const [perWeek, setPerWeek] = useState(habit && habit.per_week < 7 ? habit.per_week : 3);
   const [priv, setPriv] = useState(habit?.is_private ?? false);
+  const [difficulty, setDifficulty] = useState<Difficulty>(habit?.difficulty ?? 'normaal');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   async function save(e: FormEvent) {
     e.preventDefault();
     setBusy(true); setError(null);
-    const row = { title: title.trim(), emoji, per_week: daily ? 7 : perWeek, is_private: priv };
-    const { error } = habit
-      ? await supabase.from('habits').update(row).eq('id', habit.id)
-      : await supabase.from('habits').insert({ ...row, group_id: data.group.id });
+    const row = { title: title.trim(), emoji, per_week: daily ? 7 : perWeek, is_private: priv, difficulty };
+    const write = (r: Partial<typeof row>) => habit
+      ? supabase.from('habits').update(r).eq('id', habit.id)
+      : supabase.from('habits').insert({ ...r, group_id: data.group.id });
+    let { error } = await write(row);
+    // Database nog niet bijgewerkt (geen kolom 'difficulty')? Dan zonder moeilijkheid opslaan.
+    if (error && /difficulty/i.test(error.message)) {
+      const { difficulty: _skip, ...rest } = row; void _skip;
+      ({ error } = await write(rest));
+    }
     setBusy(false);
     if (error) setError(errMsg(error)); else onDone();
   }
@@ -191,6 +198,21 @@ function GoalForm({ habit, onDone, onCancel }: { habit: Habit | null; onDone: ()
               <button type="button" className="round" onClick={() => setPerWeek((x) => Math.min(6, x + 1))}>+</button>
             </div>
           )}
+        </div>
+        <div className="field">
+          <span>Hoe moeilijk is dit voor jóu?</span>
+          <div className="segmented">
+            {DIFFICULTIES.map((d) => (
+              <button type="button" key={d.id} className={difficulty === d.id ? 'on' : ''} onClick={() => setDifficulty(d.id)}>
+                {d.icon} {d.label}
+              </button>
+            ))}
+          </div>
+          <span className="muted small">
+            {difficulty === 'makkelijk' && 'Doe je het meestal al? Dan is het makkelijk. Telt als ½ doel en weegt lichter mee.'}
+            {difficulty === 'normaal' && 'Lukt meestal, maar je moet er wel moeite voor doen.'}
+            {difficulty === 'moeilijk' && 'Echt een uitdaging. Telt als 1½ doel en weegt zwaarder mee. De groep ziet dit label.'}
+          </span>
         </div>
         <label className="check">
           <input type="checkbox" checked={priv} onChange={(e) => setPriv(e.target.checked)} />

@@ -85,7 +85,8 @@ export default function Ranking() {
         <ul>
           <li>Het gaat om <b>hoe trouw je bent aan je eigen doelen</b>, niet om hoeveel doelen je hebt.</li>
           <li>Per week verdien je max. <b>{RULES.week}</b> punten (± 10 per dag): het percentage van je doelen dat je haalt. Een dagdoel 5 van de 7 keer = 71%, een doel van 3× per week 3 van de 3 keer = 100%. Daarvan het gemiddelde.</li>
-          <li>Heb je minder dan {RULES.minGoals} doelen, dan verdien je naar verhouding minder (1 doel = ⅓, 2 doelen = ⅔).</li>
+          <li>Moeilijkheid telt mee: 🌱 makkelijk weegt ½, 💪 gemiddeld 1 en 🔥 moeilijk 1½. Een moeilijk doel laten liggen kost dus meer. Je maximum blijft hetzelfde.</li>
+          <li>Voor volle punten heb je minstens {RULES.minGoals} "doelpunten" nodig, bijvoorbeeld 3 gemiddelde doelen, 2 moeilijke of 6 makkelijke. Met minder verdien je naar verhouding minder.</li>
           <li><b>+{RULES.perfectWeek}</b> voor een perfecte week: al je doelen gehaald ⭐</li>
           <li><b>+{RULES.group}</b> voor iedereen als de héle groep een perfecte week heeft</li>
           <li>Trainen telt mee als één doel (je trainingsdoel per week).</li>

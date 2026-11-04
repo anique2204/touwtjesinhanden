@@ -1,4 +1,4 @@
-import type { Activity, Challenge, Habit, HabitCheck, PauseDay, WeeklyGoal } from './types';
+import { difficultyOf, type Activity, type Challenge, type Habit, type HabitCheck, type PauseDay, type WeeklyGoal } from './types';
 import { addDays, daysBetween, mondayOf, today } from './dates';
 
 // ---- Puntenregels (hier aanpassen als de groep andere regels wil) ----
@@ -8,7 +8,7 @@ export const RULES = {
   week: 70,          // max per week (± 10 per dag) bij 100% van je doelen
   perfectWeek: 20,   // extra als je ál je doelen van de week haalt
   group: 30,         // iedereen had een perfecte week
-  minGoals: 3,       // met minder doelen verdien je naar verhouding minder (1 doel = ⅓)
+  minGoals: 3,       // minimaal 3 'doelpunten' voor volle punten (makkelijk = ½, gemiddeld = 1, moeilijk = 1½)
   launchDate: '2026-11-05', // dag waarop de melding over dit puntensysteem verschijnt
 };
 
@@ -64,7 +64,7 @@ function activeDays(h: Habit, start: string, end: string): { from: string; to: s
   return { from, to, days: daysBetween(from, to) + 1 };
 }
 
-export interface GoalWeek { kind: 'habit' | 'training'; id: string; label: string; emoji: string; done: number; required: number; met: boolean }
+export interface GoalWeek { kind: 'habit' | 'training'; id: string; label: string; emoji: string; done: number; required: number; met: boolean; weight: number }
 export interface WeekResult {
   week: Week; goals: GoalWeek[]; perfect: boolean;
   pct: number;      // gemiddelde voortgang over je doelen (0–1)
@@ -119,7 +119,7 @@ export function computeScores({ challenge: c, memberIds, activities, goals, habi
         const done = mine.filter((a) => a.activity_date >= w.start && a.activity_date <= w.end).length;
         const eff = effectiveDays(w.start, w.end, paused);
         const req = eff > 0 ? required(tg.sessions_per_week, eff) : 0;
-        if (req > 0) gs.push({ kind: 'training', id: 'training', label: `Trainen ${tg.sessions_per_week}× per week`, emoji: '💪', done, required: req, met: done >= req });
+        if (req > 0) gs.push({ kind: 'training', id: 'training', label: `Trainen ${tg.sessions_per_week}× per week`, emoji: '💪', done, required: req, met: done >= req, weight: 1 });
       }
       for (const h of myHabits) {
         const r = activeDays(h, w.start, w.end);
@@ -128,11 +128,13 @@ export function computeScores({ challenge: c, memberIds, activities, goals, habi
         const eff = effectiveDays(r.from, r.to, paused);
         if (eff === 0) continue; // hele week pauze: doel telt niet mee
         const req = required(h.per_week, eff);
-        gs.push({ kind: 'habit', id: h.id, label: h.title ?? 'Privé doel', emoji: h.emoji, done, required: req, met: done >= req });
+        gs.push({ kind: 'habit', id: h.id, label: h.title ?? 'Privé doel', emoji: h.emoji, done, required: req, met: done >= req, weight: difficultyOf(h.difficulty).weight });
       }
       const perfect = gs.length > 0 && gs.every((g) => g.met);
-      const pct = gs.length ? gs.reduce((a, g) => a + Math.min(g.done, g.required) / g.required, 0) / gs.length : 0;
-      const scale = (w.days / 7) * goalFactor(gs.length);
+      // gewogen gemiddelde: moeilijke doelen tellen zwaarder, makkelijke lichter
+      const totalW = gs.reduce((a, g) => a + g.weight, 0);
+      const pct = totalW ? gs.reduce((a, g) => a + g.weight * Math.min(g.done, g.required) / g.required, 0) / totalW : 0;
+      const scale = (w.days / 7) * goalFactor(totalW);
       return {
         week: w, goals: gs, perfect, pct,
         pts: Math.round(RULES.week * pct * scale),

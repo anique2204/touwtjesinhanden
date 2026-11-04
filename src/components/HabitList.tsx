@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { errMsg, supabase } from '../supabase';
 import { useStore } from '../store';
-import type { Habit } from '../types';
+import { difficultyOf, type Habit } from '../types';
 import { addDays, mondayOf, relativeDay, today } from '../dates';
 import { dayStatus, habitActiveOn, habitStreak, pauseSet, required } from '../points';
 
@@ -103,7 +103,7 @@ export default function HabitList({ onAddGoal, onAddTraining }: { onAddGoal: () 
                   <button className="habit-main" onClick={() => toggle(h)} disabled={busy === h.id}>
                     <span className="h-emoji">{h.emoji}</span>
                     <span className="grow left">
-                      <span className="h-title">{h.title} {h.is_private && <span className="lock" title="Privé">🔒</span>}</span>
+                      <span className="h-title">{h.title} {h.is_private && <span className="lock" title="Privé">🔒</span>} <span className="diff" title={difficultyOf(h.difficulty).label}>{difficultyOf(h.difficulty).icon}</span></span>
                       <span className="muted small">
                         {h.per_week >= 7 ? 'Elke dag' : `${weekDone}/${required(h.per_week, 7)} deze week`}
                         {st.n > 0 && ` · 🔥 ${st.n} ${st.unit === 'dag' ? (st.n === 1 ? 'dag' : 'dagen') : st.n === 1 ? 'week' : 'weken'}`}
