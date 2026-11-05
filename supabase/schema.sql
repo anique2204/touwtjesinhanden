@@ -353,6 +353,7 @@ create policy "habits own" on public.habits for all
   with check (user_id = auth.uid() and public.is_member(group_id));
 
 -- Doelen van de groep; bij privé-doelen van anderen worden titel en emoji verborgen.
+drop function if exists public.group_habits(uuid);
 create or replace function public.group_habits(gid uuid)
 returns table (
   id uuid, user_id uuid, title text, emoji text, per_week int,
