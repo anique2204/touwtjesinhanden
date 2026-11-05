@@ -62,7 +62,8 @@ function SettingsForm({ settings, onSaved, onWiped, hasData }: {
   settings: PrivateSettings | null; onSaved: () => void; onWiped: () => void; hasData: boolean;
 }) {
   const { me } = useStore();
-  const [period, setPeriod] = useState(settings?.track_period ?? true);
+  const off = !settings || (!settings.track_period && !settings.track_sex);
+  const [period, setPeriod] = useState(off ? true : settings!.track_period);
   const [sex, setSex] = useState(settings?.track_sex ?? false);
   const [cycleLen, setCycleLen] = useState(settings?.cycle_length ? String(settings.cycle_length) : '');
   const [busy, setBusy] = useState(false);
@@ -81,14 +82,15 @@ function SettingsForm({ settings, onSaved, onWiped, hasData }: {
   async function wipe() {
     if (!confirm('Al je cyclus- en lichaamsgegevens definitief wissen? Dit kan niet ongedaan worden.')) return;
     const a = await supabase.from('body_days').delete().eq('user_id', me.id);
-    const b = await supabase.from('private_settings').delete().eq('user_id', me.id);
+    // Alleen de cyclus-instellingen uitzetten; je meetkeuzes (voortgang) blijven bewaard
+    const b = await supabase.from('private_settings').update({ track_period: false, track_sex: false, cycle_length: null, period_length: null }).eq('user_id', me.id);
     if (a.error || b.error) return alert(errMsg(a.error ?? b.error));
     onWiped();
   }
 
   return (
     <>
-      {!settings && (
+      {off && (
         <div className="card stack">
           <h2>🌸 Je lichaam, je ritme</h2>
           <p className="muted">
@@ -115,10 +117,10 @@ function SettingsForm({ settings, onSaved, onWiped, hasData }: {
             <span className="muted small">Weet je het niet? Laat leeg. De app rekent het uit zodra je een paar cycli hebt ingevuld.</span>
           </label>
         )}
-        <button className="btn" disabled={busy || (!period && !sex)} onClick={save}>{settings ? 'Opslaan' : 'Aanzetten'}</button>
+        <button className="btn" disabled={busy || (!period && !sex)} onClick={save}>{off ? 'Aanzetten' : 'Opslaan'}</button>
         {!period && !sex && <p className="muted small">Zet minstens één van de twee aan.</p>}
       </div>
-      {settings && (
+      {!off && (
         <div className="card stack">
           <b>Gegevens wissen</b>
           <p className="muted small">Wil je stoppen? Dan kun je hier alles wat je in deze module hebt ingevuld definitief verwijderen.</p>

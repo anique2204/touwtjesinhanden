@@ -1,34 +1,56 @@
-import { useCallback, useEffect, useState, type FormEvent } from 'react';
+import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react';
 import { errMsg, supabase } from '../supabase';
 import { useStore } from '../store';
-import { POSES, photoOf, type Measurement, type Pose } from '../types';
+import { DEFAULT_MEASURES, MEASURE_FIELDS, POSES, photoOf, type MeasureKey, type Measurement, type Pose, type PrivateSettings } from '../types';
 import { compressImage } from '../image';
 import { today, shortDate } from '../dates';
-import { allPhotoPaths, BUCKET, diff, firstLast, fmt, loadMeasurements, signedUrls } from '../progress';
+import { allPhotoPaths, BUCKET, diff, fmt, loadMeasurements, signedUrls } from '../progress';
 
 const PRIVATE_NOTE = '🔒 Niemand in de groep kan je foto’s, gewicht of maten zien. De beheerder van de app kan technisch bij de opslag, maar kijkt daar niet in.';
+
+const hasPhotos = (m: Measurement) => POSES.some((p) => photoOf(m, p.id));
+const ratio = (a?: number | null, b?: number | null) => (a != null && b != null && b > 0 ? Math.round((a / b) * 100) / 100 : null);
+const r2 = (n: number | null) => (n == null ? '–' : n.toLocaleString('nl-NL', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
 
 export default function Progress({ back }: { back: () => void }) {
   const { me } = useStore();
   const [ms, setMs] = useState<Measurement[] | null>(null);
+  const [settings, setSettings] = useState<PrivateSettings | null>(null);
   const [urls, setUrls] = useState<Record<string, string>>({});
   const [error, setError] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
   const [editing, setEditing] = useState<Measurement | null>(null);
-  const [pose, setPose] = useState<Pose>('front');
+  const [showSettings, setShowSettings] = useState(false);
+  const [pose, setPose] = useState<Pose | 'all'>('front');
+  const [aId, setAId] = useState<string | null>(null);
+  const [bId, setBId] = useState<string | null>(null);
   const [pdf, setPdf] = useState<{ blob: Blob; name: string } | null>(null);
   const [pdfBusy, setPdfBusy] = useState(false);
   const [zoom, setZoom] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     try {
-      const list = await loadMeasurements(me.id);
+      const [list, st] = await Promise.all([
+        loadMeasurements(me.id),
+        supabase.from('private_settings').select('*').eq('user_id', me.id).maybeSingle(),
+      ]);
       setMs(list);
+      setSettings((st.data as PrivateSettings | null) ?? null);
       setUrls(await signedUrls(allPhotoPaths(list)));
     } catch (e) { setError(errMsg(e)); }
   }, [me.id]);
-
   useEffect(() => { void load(); }, [load]);
+
+  const fields: MeasureKey[] = useMemo(() => {
+    const chosen = (settings?.measure_fields ?? DEFAULT_MEASURES).filter((k): k is MeasureKey => MEASURE_FIELDS.some((f) => f.key === k));
+    return chosen.length ? chosen : DEFAULT_MEASURES;
+  }, [settings]);
+  const height = settings?.height_cm != null ? Number(settings.height_cm) : null;
+
+  // De twee momenten die je vergelijkt (standaard: eerste en laatste meting)
+  const list = ms ?? [];
+  const A = list.find((m) => m.id === aId) ?? list[0];
+  const B = list.find((m) => m.id === bId) ?? (list.length > 1 ? list[list.length - 1] : undefined);
 
   async function remove(m: Measurement) {
     if (!confirm(`Meting van ${shortDate(m.measured_on)} verwijderen? Dit kan niet ongedaan worden.`)) return;
@@ -41,42 +63,45 @@ export default function Progress({ back }: { back: () => void }) {
   }
 
   async function makePdf() {
-    if (!ms) return;
+    if (!ms || !A) return;
     setPdfBusy(true);
     try {
       const { makeProgressPdf } = await import('../pdf');
-      const blob = await makeProgressPdf(ms, me.display_name);
+      const blob = await makeProgressPdf(ms, me.display_name, { a: A, b: B ?? null, fields, height });
       setPdf({ blob, name: `voortgang-${me.display_name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${today()}.pdf` });
     } catch (e) { alert('PDF maken lukte niet: ' + errMsg(e)); }
     setPdfBusy(false);
   }
-
   async function openPdf() {
     if (!pdf) return;
     const { shareOrDownload } = await import('../pdf');
     await shareOrDownload(pdf.blob, pdf.name);
   }
 
-  if (adding) {
-    return <NewMeasurement onCancel={() => setAdding(false)} onSaved={async () => { setAdding(false); setPdf(null); await load(); }} />;
-  }
-  if (editing) {
-    return <NewMeasurement edit={editing} urls={urls} onCancel={() => setEditing(null)}
-      onSaved={async () => { setEditing(null); setPdf(null); await load(); }} />;
+  const done = async () => { setAdding(false); setEditing(null); setPdf(null); await load(); };
+  if (adding) return <NewMeasurement fields={fields} onCancel={() => setAdding(false)} onSaved={done} />;
+  if (editing) return <NewMeasurement fields={fields} edit={editing} urls={urls} onCancel={() => setEditing(null)} onSaved={done} />;
+  if (showSettings) {
+    return <MeasureSettings settings={settings} fields={fields} height={height}
+      onCancel={() => setShowSettings(false)} onSaved={async () => { setShowSettings(false); setPdf(null); await load(); }} />;
   }
 
-  const w = ms ? firstLast(ms, 'weight_kg') : null;
-  const t = ms ? firstLast(ms, 'waist_cm') : null;
-  const b = ms ? firstLast(ms, 'belly_cm') : null;
-  const withPose = (ms ?? []).filter((m) => photoOf(m, pose));
-  const firstP = withPose[0], lastP = withPose.length > 1 ? withPose[withPose.length - 1] : undefined;
+  // Rijen voor de vergelijking: ingeschakelde metingen + alles waar A of B een waarde heeft
+  const rows = MEASURE_FIELDS.filter((f) => fields.includes(f.key) || A?.[f.key] != null || B?.[f.key] != null);
+  const ratios = [
+    { label: 'Taille ÷ heupen', a: ratio(A?.waist_cm, A?.hips_cm), b: ratio(B?.waist_cm, B?.hips_cm) },
+    { label: 'Taille ÷ lengte', a: ratio(A?.waist_cm, height), b: ratio(B?.waist_cm, height) },
+  ].filter((r) => r.a != null || r.b != null);
+  const pick = (setter: (id: string) => void) => (e: React.ChangeEvent<HTMLSelectElement>) => { setter(e.target.value); setPdf(null); };
+  const optionLabel = (m: Measurement, i: number) =>
+    `${shortDate(m.measured_on)}${i === 0 ? ' (begin)' : i === list.length - 1 ? ' (nieuwste)' : ''}${hasPhotos(m) ? ' 📷' : ''}`;
 
   return (
     <div className="stack">
       <header className="page-head">
         <button className="link" onClick={back}>‹ Terug</button>
         <h1 className="grow" style={{ textAlign: 'center' }}>Mijn voortgang</h1>
-        <span style={{ width: 52 }} />
+        <button className="link" onClick={() => setShowSettings(true)} aria-label="Welke metingen">⚙️</button>
       </header>
 
       <div className="private">{PRIVATE_NOTE}</div>
@@ -88,62 +113,80 @@ export default function Progress({ back }: { back: () => void }) {
         <div className="card stack">
           <h2>Leg je startpunt vast 📸</h2>
           <p className="muted">
-            Meet je gewicht, taille en buikomtrek en maak 4 foto’s. Over een paar weken zie je precies wat je bereikt hebt.
+            Meet je {MEASURE_FIELDS.filter((f) => fields.includes(f.key)).map((f) => f.label.toLowerCase()).join(', ')} en maak 4 foto’s.
+            Over een paar weken zie je precies wat je bereikt hebt.
           </p>
+          <button className="link small" style={{ alignSelf: 'flex-start' }} onClick={() => setShowSettings(true)}>⚙️ Kies welke metingen je bijhoudt</button>
         </div>
       )}
 
       <button className="btn big" onClick={() => setAdding(true)}>＋ Nieuwe meting</button>
 
-      {ms && ms.length > 0 && (
+      {ms && A && (
         <>
-          <div className="card">
-            <div className="m-table">
-              <span /><span className="muted small">Begin</span><span className="muted small">Nu</span><span className="muted small">Verschil</span>
-              {[
-                { l: 'Gewicht', r: w!, k: 'weight_kg' as const, u: 'kg' },
-                { l: 'Taille', r: t!, k: 'waist_cm' as const, u: 'cm' },
-                { l: 'Buik', r: b!, k: 'belly_cm' as const, u: 'cm' },
-              ].map(({ l, r, k, u }) => {
-                const a = r.first?.[k] ?? null, z = r.last?.[k] ?? null;
-                return (
-                  <Row key={l} label={l} a={fmt(a, u)} b={r.last ? fmt(z, u) : '–'} d={diff(a, z, u)}
-                    good={a != null && z != null && z < a} bad={a != null && z != null && z > a} />
-                );
-              })}
-            </div>
-          </div>
-
           <div className="card stack">
-            <div className="segmented">
-              {POSES.map((p) => (
-                <button key={p.id} className={pose === p.id ? 'on' : ''} onClick={() => setPose(p.id)}>{p.label}</button>
+            <h2>Vergelijk</h2>
+            {list.length > 1 ? (
+              <div className="moment-pick">
+                <label className="field"><span>Van</span>
+                  <select className="full" value={A.id} onChange={pick(setAId)}>
+                    {list.map((m, i) => <option key={m.id} value={m.id}>{optionLabel(m, i)}</option>)}
+                  </select>
+                </label>
+                <button className="round swap" aria-label="Omwisselen" onClick={() => { const a = A.id; setAId(B?.id ?? a); setBId(a); setPdf(null); }}>⇄</button>
+                <label className="field"><span>Naar</span>
+                  <select className="full" value={B?.id ?? ''} onChange={pick(setBId)}>
+                    {list.map((m, i) => <option key={m.id} value={m.id}>{optionLabel(m, i)}</option>)}
+                  </select>
+                </label>
+              </div>
+            ) : <p className="muted small">Na je volgende meting kun je hier twee momenten naast elkaar zetten.</p>}
+
+            <div className="m-table">
+              <span /><span className="muted small">{shortDate(A.measured_on)}</span><span className="muted small">{B ? shortDate(B.measured_on) : '–'}</span><span className="muted small">Verschil</span>
+              {rows.map((f) => {
+                const a = A[f.key] ?? null, z = B?.[f.key] ?? null;
+                return <Row key={f.key} label={f.label} a={fmt(a, f.unit)} b={B ? fmt(z, f.unit) : '–'} d={diff(a, z, f.unit)}
+                  good={a != null && z != null && z < a} bad={a != null && z != null && z > a} />;
+              })}
+              {ratios.map((r) => (
+                <Row key={r.label} label={r.label} a={r2(r.a)} b={r2(r.b)}
+                  d={r.a != null && r.b != null ? diff(r.a, r.b, '', 2) : '–'} good={r.a != null && r.b != null && r.b < r.a} bad={false} />
               ))}
             </div>
-            <div className="compare">
-              {[{ l: 'Begin', m: firstP }, { l: 'Nu', m: lastP }].map(({ l, m }) => {
-                const path = m && photoOf(m, pose);
-                const u = path ? urls[path] : undefined;
-                return (
-                  <figure key={l}>
-                    {u ? <img src={u} alt="" onClick={() => setZoom(u)} /> : <div className="ph-empty">{l === 'Nu' && firstP ? 'Nog geen nieuwere foto' : 'Geen foto'}</div>}
-                    <figcaption><b>{l}</b>{m && ` · ${shortDate(m.measured_on)}`}</figcaption>
-                  </figure>
-                );
-              })}
+
+            <div className="segmented">
+              {POSES.map((p) => <button key={p.id} className={pose === p.id ? 'on' : ''} onClick={() => setPose(p.id)}>{p.label}</button>)}
+              <button className={pose === 'all' ? 'on' : ''} onClick={() => setPose('all')}>Alle</button>
+            </div>
+            <div className={'compare' + (pose === 'all' ? ' all' : '')}>
+              {(pose === 'all' ? POSES.map((p) => p.id) : [pose]).flatMap((ps) =>
+                [A, B].map((m, i) => {
+                  const path = m && photoOf(m, ps);
+                  const u = path ? urls[path] : undefined;
+                  return (
+                    <figure key={`${ps}-${i}`}>
+                      {u ? <img src={u} alt="" onClick={() => setZoom(u)} /> : <div className="ph-empty">{m ? 'Geen foto' : 'Kies een moment'}</div>}
+                      <figcaption>
+                        {pose === 'all' && <>{POSES.find((p) => p.id === ps)?.label} · </>}
+                        <b>{m ? shortDate(m.measured_on) : '–'}</b>
+                      </figcaption>
+                    </figure>
+                  );
+                }))}
             </div>
           </div>
 
           <div className="card stack">
             <h2>📄 PDF-overzicht</h2>
-            <p className="muted small">Je beginfoto’s naast je nieuwste, je maten met de verschillen, en al je metingen op een rij.</p>
+            <p className="muted small">De twee gekozen momenten naast elkaar (foto’s en maten), plus al je metingen op een rij.</p>
             {!pdf
               ? <button className="btn" disabled={pdfBusy} onClick={makePdf}>{pdfBusy ? 'PDF maken…' : 'Maak PDF'}</button>
               : <button className="btn" onClick={openPdf}>Open / bewaar PDF</button>}
           </div>
 
           <h2>Alle metingen</h2>
-          {[...ms].reverse().map((m) => (
+          {[...list].reverse().map((m) => (
             <div key={m.id} className="card stack">
               <div className="m-head">
                 <b>{shortDate(m.measured_on)}</b>
@@ -152,12 +195,12 @@ export default function Progress({ back }: { back: () => void }) {
                   <button className="link danger small" onClick={() => remove(m)}>Verwijder</button>
                 </span>
               </div>
-              <div className="stats">
-                <div><b>{fmt(m.weight_kg, 'kg')}</b><span>gewicht</span></div>
-                <div><b>{fmt(m.waist_cm, 'cm')}</b><span>taille</span></div>
-                <div><b>{fmt(m.belly_cm, 'cm')}</b><span>buik</span></div>
+              <div className="stats wrap">
+                {MEASURE_FIELDS.filter((f) => m[f.key] != null || fields.includes(f.key)).map((f) => (
+                  <div key={f.key}><b>{fmt(m[f.key] ?? null, f.unit)}</b><span>{f.label.toLowerCase()}</span></div>
+                ))}
               </div>
-              {POSES.some((p) => photoOf(m, p.id)) && <div className="thumbs">
+              {hasPhotos(m) && <div className="thumbs">
                 {POSES.map((p) => {
                   const path = photoOf(m, p.id);
                   const u = path ? urls[path] : undefined;
@@ -167,6 +210,12 @@ export default function Progress({ back }: { back: () => void }) {
                 })}
               </div>}
               {m.note && <p className="notes">{m.note}</p>}
+              {list.length > 1 && (
+                <div className="hl-actions">
+                  <button className="link small" onClick={() => { setAId(m.id); setPdf(null); window.scrollTo(0, 0); }}>Zet als “van”</button>
+                  <button className="link small" onClick={() => { setBId(m.id); setPdf(null); window.scrollTo(0, 0); }}>Zet als “naar”</button>
+                </div>
+              )}
             </div>
           ))}
         </>
@@ -186,15 +235,74 @@ function Row({ label, a, b, d, good, bad }: { label: string; a: string; b: strin
   );
 }
 
-function NewMeasurement({ onCancel, onSaved, edit, urls = {} }: {
-  onCancel: () => void; onSaved: () => void; edit?: Measurement; urls?: Record<string, string>;
+function MeasureSettings({ settings, fields, height, onCancel, onSaved }: {
+  settings: PrivateSettings | null; fields: MeasureKey[]; height: number | null; onCancel: () => void; onSaved: () => void;
+}) {
+  const { me } = useStore();
+  const [chosen, setChosen] = useState<MeasureKey[]>(fields);
+  const [h, setH] = useState(height != null ? String(height).replace('.', ',') : '');
+  const [busy, setBusy] = useState(false);
+  const toggle = (k: MeasureKey) => setChosen((x) => (x.includes(k) ? x.filter((y) => y !== k) : [...x, k]));
+
+  async function save() {
+    setBusy(true);
+    const hv = parseFloat(h.replace(',', '.'));
+    const { error } = await supabase.from('private_settings').upsert({
+      user_id: me.id,
+      measure_fields: MEASURE_FIELDS.map((f) => f.key).filter((k) => chosen.includes(k)),
+      height_cm: Number.isFinite(hv) && hv >= 100 && hv <= 230 ? hv : null,
+      ...(settings ? {} : { track_period: false, track_sex: false }),
+    });
+    setBusy(false);
+    if (error) {
+      return alert(/measure_fields|height_cm|column/i.test(error.message)
+        ? 'De database moet nog even bijgewerkt worden (008_extra_metingen.sql). Vraag de beheerder.'
+        : errMsg(error));
+    }
+    onSaved();
+  }
+
+  return (
+    <div className="stack">
+      <header className="page-head">
+        <button className="link" onClick={onCancel}>‹ Annuleer</button>
+        <h1 className="grow" style={{ textAlign: 'center' }}>Welke metingen?</h1>
+        <span style={{ width: 70 }} />
+      </header>
+      <p className="muted small">Kies wat je wilt bijhouden. Je kunt dit altijd aanpassen; oude metingen blijven bewaard.</p>
+      <div className="card list">
+        {MEASURE_FIELDS.map((f) => (
+          <label key={f.key} className="share-row measure-opt">
+            <span className="grow"><b>{f.label}</b><span className="muted small">{f.tip}</span></span>
+            <span className="switch"><input type="checkbox" checked={chosen.includes(f.key)} onChange={() => toggle(f.key)} /><span /></span>
+          </label>
+        ))}
+      </div>
+      <div className="card stack">
+        <label className="field"><span>Je lengte in cm (optioneel)</span>
+          <input inputMode="decimal" value={h} onChange={(e) => setH(e.target.value.replace(/[^\d.,]/g, ''))} placeholder="168" />
+        </label>
+        <p className="muted small">
+          Met je lengte rekent de app je <b>taille ÷ lengte</b> uit. Met heupen erbij ook <b>taille ÷ heupen</b>.
+          Die verhoudingen laten je voortgang mooi zien, los van je gewicht.
+        </p>
+      </div>
+      <button className="btn big" disabled={busy || chosen.length === 0} onClick={save}>{busy ? 'Opslaan…' : 'Opslaan'}</button>
+    </div>
+  );
+}
+
+function NewMeasurement({ onCancel, onSaved, edit, urls = {}, fields }: {
+  onCancel: () => void; onSaved: () => void; edit?: Measurement; urls?: Record<string, string>; fields: MeasureKey[];
 }) {
   const { me } = useStore();
   const str = (n: number | null | undefined) => (n == null ? '' : String(n).replace('.', ','));
   const [date, setDate] = useState(edit?.measured_on ?? today());
-  const [weight, setWeight] = useState(str(edit?.weight_kg));
-  const [waist, setWaist] = useState(str(edit?.waist_cm));
-  const [belly, setBelly] = useState(str(edit?.belly_cm));
+  // Ingeschakelde metingen + metingen die bij deze meting al een waarde hebben
+  const shownFields = MEASURE_FIELDS.filter((f) => fields.includes(f.key) || (edit && edit[f.key] != null));
+  const [vals, setVals] = useState<Partial<Record<MeasureKey, string>>>(
+    () => Object.fromEntries(MEASURE_FIELDS.map((f) => [f.key, str(edit?.[f.key])])),
+  );
   const [note, setNote] = useState(edit?.note ?? '');
   const [files, setFiles] = useState<Partial<Record<Pose, File>>>({});
   const [previews, setPreviews] = useState<Partial<Record<Pose, string>>>({});
@@ -223,9 +331,9 @@ function NewMeasurement({ onCancel, onSaved, edit, urls = {} }: {
 
   async function save(e: FormEvent) {
     e.preventDefault();
-    const w = num(weight), t = num(waist), b = num(belly);
+    const nums = Object.fromEntries(shownFields.map((f) => [f.key, num(vals[f.key] ?? '')])) as Partial<Record<MeasureKey, number | null>>;
     const anyPhoto = POSES.some((p) => files[p.id] || (!removed[p.id] && oldPath(p.id)));
-    if (w == null && t == null && b == null && !anyPhoto) {
+    if (Object.values(nums).every((v) => v == null) && !anyPhoto) {
       setError('Vul minstens één maat in of voeg een foto toe.'); return;
     }
     setError(null);
@@ -251,7 +359,7 @@ function NewMeasurement({ onCancel, onSaved, edit, urls = {} }: {
         if (removed[p.id] && !files[p.id] && oldPath(p.id)) { photo[`photo_${p.id}`] = null; toDelete.push(oldPath(p.id)!); }
       }
       setBusy('Opslaan…');
-      const fields = { measured_on: date, weight_kg: w, waist_cm: t, belly_cm: b, note: note.trim() || null, ...photo };
+      const fields = { measured_on: date, ...nums, note: note.trim() || null, ...photo };
       const { error: insErr } = edit
         ? await supabase.from('measurements').update(fields).eq('id', id)
         : await supabase.from('measurements').insert({ id, ...fields });
@@ -280,23 +388,20 @@ function NewMeasurement({ onCancel, onSaved, edit, urls = {} }: {
           <input type="date" required max={today()} value={date} onChange={(e) => setDate(e.target.value)} />
         </label>
         <div className="row3">
-          <label className="field"><span>Gewicht (kg)</span>
-            <input inputMode="decimal" value={weight} onChange={(e) => setWeight(clean(e.target.value))} placeholder="72,5" />
-          </label>
-          <label className="field"><span>Taille (cm)</span>
-            <input inputMode="decimal" value={waist} onChange={(e) => setWaist(clean(e.target.value))} placeholder="80" />
-          </label>
-          <label className="field"><span>Buik (cm)</span>
-            <input inputMode="decimal" value={belly} onChange={(e) => setBelly(clean(e.target.value))} placeholder="88" />
-          </label>
+          {shownFields.map((f) => (
+            <label key={f.key} className="field"><span>{f.label} ({f.unit})</span>
+              <input inputMode="decimal" value={vals[f.key] ?? ''} placeholder={f.placeholder}
+                onChange={(e) => setVals((v) => ({ ...v, [f.key]: clean(e.target.value) }))} />
+            </label>
+          ))}
         </div>
         <details className="tips">
           <summary>Hoe meet ik dit goed?</summary>
           <ul>
-            <li><b>Taille:</b> rond het smalste deel van je middel, meestal net boven je navel.</li>
-            <li><b>Buikomtrek:</b> precies ter hoogte van je navel.</li>
-            <li>Meet ontspannen, na het uitademen, met het meetlint recht en niet te strak.</li>
-            <li>Meet altijd op hetzelfde moment, het liefst ’s ochtends nuchter na het plassen.</li>
+            {shownFields.map((f) => <li key={f.key}><b>{f.label}:</b> {f.tip}</li>)}
+            <li>Meet altijd op hetzelfde moment, het liefst ’s ochtends voor het eten, in dezelfde kleding.</li>
+            <li>Lint strak maar niet in de huid drukken, recht houden, rustig uitademen.</li>
+            <li>Kijk naar de trend over een paar weken, niet naar één meting. Eens per 1 à 2 weken meten is genoeg.</li>
           </ul>
         </details>
       </div>

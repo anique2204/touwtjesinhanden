@@ -399,3 +399,12 @@ label.btn { display: inline-block; text-align: center; cursor: pointer; }
 .diff { font-size: 11px; opacity: .85; margin-left: 2px; }
 .pose-wrap { position: relative; }
 .pose-x { position: absolute; top: 4px; right: 4px; width: 24px; height: 24px; border-radius: 50%; border: 0; background: rgba(36,23,21,.7); color: #fff; font-size: 16px; line-height: 1; cursor: pointer; z-index: 2; }
+.moment-pick { display: grid; grid-template-columns: 1fr auto 1fr; gap: 8px; align-items: end; }
+.moment-pick select { font-size: 14px; }
+.round.swap { margin-bottom: 2px; }
+.compare.all { grid-template-columns: 1fr 1fr; }
+.compare.all figure img, .compare.all .ph-empty { aspect-ratio: 3 / 4; }
+.stats.wrap { flex-wrap: wrap; gap: 14px 22px; }
+.measure-opt { padding: 8px 0; border-bottom: 1px solid var(--line); }
+.measure-opt:last-child { border-bottom: 0; }
+.measure-opt .grow .small { font-size: 12px; }

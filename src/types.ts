@@ -36,11 +36,25 @@ export const POSES: { id: Pose; label: string }[] = [
 export interface Measurement {
   id: string; user_id: string; measured_on: string;
   weight_kg: number | null; waist_cm: number | null; belly_cm: number | null;
+  hips_cm?: number | null; chest_cm?: number | null; arm_cm?: number | null; thigh_cm?: number | null; fat_pct?: number | null;
   photo_front: string | null; photo_back: string | null; photo_left: string | null; photo_right: string | null;
   note: string | null; created_at: string;
 }
 
 export const photoOf = (m: Measurement, pose: Pose): string | null => m[`photo_${pose}`];
+
+export type MeasureKey = 'weight_kg' | 'waist_cm' | 'belly_cm' | 'hips_cm' | 'chest_cm' | 'arm_cm' | 'thigh_cm' | 'fat_pct';
+export const MEASURE_FIELDS: { key: MeasureKey; label: string; unit: string; placeholder: string; tip: string }[] = [
+  { key: 'weight_kg', label: 'Gewicht', unit: 'kg', placeholder: '72,5', tip: '’s Ochtends nuchter, na het plassen, zonder kleding of altijd dezelfde.' },
+  { key: 'waist_cm', label: 'Taille', unit: 'cm', placeholder: '80', tip: 'Rond het smalste deel van je middel, meestal net boven je navel.' },
+  { key: 'belly_cm', label: 'Buik', unit: 'cm', placeholder: '88', tip: 'Precies ter hoogte van je navel.' },
+  { key: 'hips_cm', label: 'Heupen', unit: 'cm', placeholder: '98', tip: 'Rond het breedste punt van je billen, lint horizontaal.' },
+  { key: 'chest_cm', label: 'Borst', unit: 'cm', placeholder: '92', tip: 'Rond het volste punt, ter hoogte van je tepels.' },
+  { key: 'arm_cm', label: 'Bovenarm', unit: 'cm', placeholder: '28', tip: 'Dikste punt van je bovenarm, arm ontspannen langs je lichaam. Altijd dezelfde arm.' },
+  { key: 'thigh_cm', label: 'Bovenbeen', unit: 'cm', placeholder: '56', tip: 'Dikste punt, halverwege heup en knie. Altijd hetzelfde been.' },
+  { key: 'fat_pct', label: 'Vetpercentage', unit: '%', placeholder: '28', tip: 'Van een slimme weegschaal of een meting bij sportschool/diëtist. Thuisweegschalen zijn onnauwkeurig: kijk vooral naar de trend.' },
+];
+export const DEFAULT_MEASURES: MeasureKey[] = ['weight_kg', 'waist_cm', 'belly_cm'];
 
 export type Difficulty = 'makkelijk' | 'normaal' | 'moeilijk';
 export const DIFFICULTIES: { id: Difficulty; label: string; icon: string; weight: number }[] = [
@@ -79,7 +93,10 @@ export const MOODS: { score: number; emoji: string; label: string; img?: string 
 export const moodEmoji = (score: number) => MOODS.find((m) => m.score === score)?.emoji ?? '❔';
 export const MOOD_TAGS = ['energiek', 'moe', 'rustig', 'gestrest', 'blij', 'prikkelbaar', 'verdrietig', 'trots', 'ziek', 'slecht geslapen'];
 
-export interface PrivateSettings { user_id: string; track_period: boolean; track_sex: boolean; cycle_length: number | null; period_length: number | null }
+export interface PrivateSettings {
+  user_id: string; track_period: boolean; track_sex: boolean; cycle_length: number | null; period_length: number | null;
+  measure_fields?: string[]; height_cm?: number | null;
+}
 export type Flow = 'spotting' | 'licht' | 'normaal' | 'hevig';
 export interface BodyDay {
   user_id: string; day: string; period: boolean; flow: Flow | null; symptoms: string[];
