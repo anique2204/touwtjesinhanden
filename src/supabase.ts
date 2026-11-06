@@ -13,7 +13,15 @@ export const supabase = createClient(url ?? 'http://localhost', key ?? 'missing'
   auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true },
 });
 
+/** Leesbare foutmelding, ook voor rare gevallen (zoals een browser-Event). */
 export function errMsg(e: unknown): string {
-  if (e && typeof e === 'object' && 'message' in e) return String((e as { message: unknown }).message);
+  if (typeof Event !== 'undefined' && e instanceof Event) {
+    return 'Er ging iets mis met het laden van een bestand (meestal een foto). Probeer een andere foto of maak er een screenshot van.';
+  }
+  if (e && typeof e === 'object' && 'message' in e) {
+    const m = String((e as { message: unknown }).message);
+    if (/failed to fetch|network|load failed/i.test(m)) return 'Geen verbinding. Check je internet en probeer het opnieuw.';
+    return m;
+  }
   return String(e);
 }
