@@ -66,10 +66,20 @@ export const difficultyOf = (d?: string | null) => DIFFICULTIES.find((x) => x.id
 
 export interface Habit {
   difficulty?: Difficulty;
+  per_day?: number;            // >1 = meerdere keren per dag (teller)
+  options?: string[];          // keuzedoel: één van deze opties is genoeg
+  reminder_times?: string[];   // 'HH:MM', alleen voor de eigenaar zichtbaar
   id: string; user_id: string; title: string | null; emoji: string; per_week: number;
   is_private: boolean; start_date: string; archived_on: string | null; created_at: string;
 }
-export interface HabitCheck { habit_id: string; group_id: string; user_id: string; check_date: string }
+export interface HabitCheck { habit_id: string; group_id: string; user_id: string; check_date: string; count?: number; option?: string | null }
+
+/** Hoe vaak per dag een doel moet (minimaal 1). */
+export const perDay = (h?: Pick<Habit, 'per_day'> | null) => Math.max(1, h?.per_day ?? 1);
+/** Deel van de dag gedaan (0–1) voor één vinkje-rij. */
+export const checkPart = (c: HabitCheck, h?: Pick<Habit, 'per_day'> | null) => Math.min(c.count ?? 1, perDay(h)) / perDay(h);
+/** Is het doel op die dag helemaal gedaan? */
+export const checkFull = (c: HabitCheck, h?: Pick<Habit, 'per_day'> | null) => (c.count ?? 1) >= perDay(h);
 export type CheerKind = 'highfive' | 'heart' | 'thinking';
 export interface Cheer { group_id: string; from_user: string; to_user: string; day: string; kind: CheerKind }
 export const CHEER_KINDS: { id: CheerKind; emoji: string; label: string }[] = [

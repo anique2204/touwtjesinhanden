@@ -62,7 +62,7 @@ export default function Goals({ back }: { back: () => void }) {
                 <div className="grow">
                   <div className="name">{h.title} {h.is_private && <span className="lock">🔒</span>}</div>
                   <div className="muted small">
-                    {difficultyOf(h.difficulty).icon} {h.per_week >= 7 ? 'Elke dag' : `${h.per_week}× per week`}
+                    {difficultyOf(h.difficulty).icon} {(h.per_day ?? 1) > 1 ? `${h.per_day}× per dag` : h.per_week >= 7 ? 'Elke dag' : `${h.per_week}× per week`}{h.options?.length ? ' · keuzedoel' : ''}{h.reminder_times?.length ? ` · 🔔 ${h.reminder_times.join(', ')}` : ''}
                     {h.is_private ? ' · privé' : ' · zichtbaar voor de groep'}
                     {st.n > 0 && ` · 🔥 ${st.n}`}
                   </div>
@@ -122,8 +122,22 @@ function GoalForm({ habit, onDone, onCancel }: { habit: Habit | null; onDone: ()
     setCustom(last);
     if (last && /\p{Extended_Pictographic}|\p{Regional_Indicator}/u.test(last)) setEmoji(last);
   }
-  const [daily, setDaily] = useState((habit?.per_week ?? 7) >= 7);
+  const [freq, setFreq] = useState<'daily' | 'weekly' | 'multi'>(
+    (habit?.per_day ?? 1) > 1 ? 'multi' : (habit?.per_week ?? 7) >= 7 ? 'daily' : 'weekly');
+  const setDaily = (d: boolean) => setFreq(d ? 'daily' : 'weekly');
+  const daily = freq !== 'weekly';
   const [perWeek, setPerWeek] = useState(habit && habit.per_week < 7 ? habit.per_week : 3);
+  const [perDayN, setPerDayN] = useState(Math.max(2, habit?.per_day ?? 3));
+  const [isChoice, setIsChoice] = useState(Boolean(habit?.options?.length));
+  const [options, setOptions] = useState<string[]>(habit?.options ?? []);
+  const [newOption, setNewOption] = useState('');
+  const [reminders, setReminders] = useState<string[]>(habit?.reminder_times ?? []);
+
+  function addOption() {
+    const o = newOption.trim();
+    if (o && !options.includes(o) && options.length < 8) setOptions([...options, o]);
+    setNewOption('');
+  }
   const [priv, setPriv] = useState(habit?.is_private ?? false);
   const [difficulty, setDifficulty] = useState<Difficulty>(habit?.difficulty ?? 'normaal');
   const [busy, setBusy] = useState(false);
@@ -132,14 +146,20 @@ function GoalForm({ habit, onDone, onCancel }: { habit: Habit | null; onDone: ()
   async function save(e: FormEvent) {
     e.preventDefault();
     setBusy(true); setError(null);
-    const row = { title: title.trim(), emoji, per_week: daily ? 7 : perWeek, is_private: priv, difficulty };
+    if (isChoice && options.length < 2) { setBusy(false); setError('Geef minstens 2 keuzes op, of zet "keuzedoel" uit.'); return; }
+    const row = {
+      title: title.trim(), emoji, per_week: daily ? 7 : perWeek, is_private: priv, difficulty,
+      per_day: freq === 'multi' ? perDayN : 1,
+      options: isChoice && freq !== 'multi' ? options : [],
+      reminder_times: [...new Set(reminders.filter(Boolean))].sort(),
+    };
     const write = (r: Partial<typeof row>) => habit
       ? supabase.from('habits').update(r).eq('id', habit.id)
       : supabase.from('habits').insert({ ...r, group_id: data.group.id });
     let { error } = await write(row);
     // Database nog niet bijgewerkt (geen kolom 'difficulty')? Dan zonder moeilijkheid opslaan.
-    if (error && /difficulty/i.test(error.message)) {
-      const { difficulty: _skip, ...rest } = row; void _skip;
+    if (error && /difficulty|per_day|options|reminder_times/i.test(error.message)) {
+      const { difficulty: _a, per_day: _b, options: _c, reminder_times: _d, ...rest } = row; void _a; void _b; void _c; void _d;
       ({ error } = await write(rest));
     }
     setBusy(false);
@@ -188,9 +208,17 @@ function GoalForm({ habit, onDone, onCancel }: { habit: Habit | null; onDone: ()
         <div className="field">
           <span>Hoe vaak?</span>
           <div className="segmented">
-            <button type="button" className={daily ? 'on' : ''} onClick={() => setDaily(true)}>Elke dag</button>
-            <button type="button" className={!daily ? 'on' : ''} onClick={() => setDaily(false)}>Paar keer per week</button>
+            <button type="button" className={freq === 'daily' ? 'on' : ''} onClick={() => setFreq('daily')}>Elke dag</button>
+            <button type="button" className={freq === 'multi' ? 'on' : ''} onClick={() => setFreq('multi')}>Vaker per dag</button>
+            <button type="button" className={freq === 'weekly' ? 'on' : ''} onClick={() => setFreq('weekly')}>Paar × per week</button>
           </div>
+          {freq === 'multi' && (
+            <div className="goal-editor">
+              <button type="button" className="round" onClick={() => setPerDayN((x) => Math.max(2, x - 1))}>−</button>
+              <div className="goal-n"><b>{perDayN}×</b><span>per dag</span></div>
+              <button type="button" className="round" onClick={() => setPerDayN((x) => Math.min(10, x + 1))}>+</button>
+            </div>
+          )}
           {!daily && (
             <div className="goal-editor">
               <button type="button" className="round" onClick={() => setPerWeek((x) => Math.max(1, x - 1))}>−</button>
@@ -198,6 +226,46 @@ function GoalForm({ habit, onDone, onCancel }: { habit: Habit | null; onDone: ()
               <button type="button" className="round" onClick={() => setPerWeek((x) => Math.min(6, x + 1))}>+</button>
             </div>
           )}
+        </div>
+        {freq !== 'multi' && (
+          <div className="field">
+            <label className="share-row">
+              <span className="grow">
+                <b>🔀 Keuzedoel</b>
+                <span className="muted small">Eén van de keuzes doen is genoeg, bijv. handstand óf springen óf lymfemassage.</span>
+              </span>
+              <span className="switch"><input type="checkbox" checked={isChoice} onChange={(e) => setIsChoice(e.target.checked)} /><span /></span>
+            </label>
+            {isChoice && (
+              <>
+                <div className="chips">
+                  {options.map((o) => (
+                    <button type="button" key={o} className="chip on" onClick={() => setOptions(options.filter((x) => x !== o))} title="Weghalen">{o} ✕</button>
+                  ))}
+                </div>
+                <div className="own-emoji">
+                  <input value={newOption} maxLength={30} onChange={(e) => setNewOption(e.target.value)} placeholder="Keuze toevoegen, bijv. handstand"
+                    onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addOption(); } }} />
+                  <button type="button" className="btn small" onClick={addOption} disabled={!newOption.trim()}>＋</button>
+                </div>
+              </>
+            )}
+          </div>
+        )}
+        <div className="field">
+          <span>🔔 Herinneringen (optioneel)</span>
+          <div className="chips">
+            {reminders.map((t, i) => (
+              <span key={i} className="time-chip">
+                <input type="time" value={t} onChange={(e) => setReminders(reminders.map((x, j) => (j === i ? e.target.value : x)))} />
+                <button type="button" className="link small danger" onClick={() => setReminders(reminders.filter((_, j) => j !== i))} aria-label="Weghalen">✕</button>
+              </span>
+            ))}
+            {reminders.length < 6 && (
+              <button type="button" className="chip" onClick={() => setReminders([...reminders, reminders.length ? '14:00' : '10:00'])}>＋ tijd</button>
+            )}
+          </div>
+          <span className="muted small">Je krijgt alleen een melding als je het doel nog niet (helemaal) gedaan hebt. Werkt zodra je meldingen aanzet bij Ik → Meldingen.</span>
         </div>
         <div className="field">
           <span>Hoe moeilijk is dit voor jóu?</span>

@@ -408,3 +408,15 @@ label.btn { display: inline-block; text-align: center; cursor: pointer; }
 .measure-opt { padding: 8px 0; border-bottom: 1px solid var(--line); }
 .measure-opt:last-child { border-bottom: 0; }
 .measure-opt .grow .small { font-size: 12px; }
+
+/* Vaker per dag + keuzedoel */
+.habit { position: relative; }
+.habit.part .habit-main { border-color: var(--accent-line); }
+.h-check.count { color: var(--accent); font-size: 13px; position: relative; }
+.h-check.count b { background: #fff; border-radius: 50%; width: 22px; height: 22px; display: grid; place-items: center; }
+.h-minus { position: absolute; right: 52px; top: 50%; transform: translateY(-50%); width: 28px; height: 28px; border-radius: 50%; border: 1px solid var(--line); background: #fff; color: var(--muted); font-size: 16px; cursor: pointer; }
+.h-options { display: flex; flex-wrap: wrap; gap: 6px; padding: 8px 4px 2px 48px; align-items: center; }
+.time-chip { display: inline-flex; align-items: center; gap: 4px; border: 1px solid var(--line); border-radius: 999px; padding: 2px 8px; background: #fff; }
+.time-chip input { border: 0; padding: 4px; width: auto; box-shadow: none !important; }
+.hchip.part { opacity: 1; box-shadow: inset 0 0 0 1px var(--accent-line); }
+.hchip-n { font-weight: 700; color: var(--accent); }

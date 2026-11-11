@@ -3,7 +3,7 @@ import { errMsg, supabase } from '../supabase';
 import { useStore } from '../store';
 import { daysBetween, today } from '../dates';
 import { activeStreak, dayStatus, habitActiveOn } from '../points';
-import { CHEER_KINDS, difficultyOf, SPORTS, type CheerKind } from '../types';
+import { CHEER_KINDS, checkFull, difficultyOf, perDay, SPORTS, type CheerKind } from '../types';
 import Avatar from './Avatar';
 import MoodIcon from './MoodIcon';
 
@@ -42,7 +42,7 @@ export default function GroupDay({ day, title }: { day: string; title?: string }
       <ul className="people">
         {people.map(({ id, p, st }) => {
           const habits = data.habits.filter((h) => h.user_id === id && habitActiveOn(h, day));
-          const checked = new Set(data.checks.filter((x) => x.user_id === id && x.check_date === day).map((x) => x.habit_id));
+          const checkFor = (hid: string) => data.checks.find((x) => x.user_id === id && x.check_date === day && x.habit_id === hid);
           const trainings = data.activities.filter((a) => a.user_id === id && a.activity_date === day);
           const got = data.cheers.filter((c) => c.to_user === id && c.day === day);
           const streak = activeStreak(id, data.checks, data.activities, data.pauses);
@@ -70,11 +70,18 @@ export default function GroupDay({ day, title }: { day: string; title?: string }
 
               {(habits.length > 0 || trainings.length > 0) && (
                 <div className="chips-row">
-                  {habits.map((h) => (
-                    <span key={h.id} className={'hchip' + (checked.has(h.id) ? ' on' : '')} title={`${h.title ?? 'Privé doel'} · ${difficultyOf(h.difficulty).label}`}>
-                      {h.emoji}<span className="hchip-t">{h.title ?? 'privé'}</span><span className="diff">{difficultyOf(h.difficulty).icon}</span>
-                    </span>
-                  ))}
+                  {habits.map((h) => {
+                    const c = checkFor(h.id);
+                    const full = Boolean(c && checkFull(c, h));
+                    const choice = c?.option != null ? h.options?.[Number(c.option)] : undefined;
+                    return (
+                      <span key={h.id} className={'hchip' + (full ? ' on' : c ? ' part' : '')} title={`${h.title ?? 'Privé doel'} · ${difficultyOf(h.difficulty).label}`}>
+                        {h.emoji}<span className="hchip-t">{h.title ?? 'privé'}{choice ? `: ${choice}` : ''}</span>
+                        {perDay(h) > 1 && <span className="hchip-n">{c?.count ?? 0}/{perDay(h)}</span>}
+                        <span className="diff">{difficultyOf(h.difficulty).icon}</span>
+                      </span>
+                    );
+                  })}
                   {trainings.map((a) => (
                     <span key={a.id} className="hchip on">{SPORTS[a.sport].emoji}<span className="hchip-t">{a.label || SPORTS[a.sport].label}</span></span>
                   ))}

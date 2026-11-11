@@ -1,4 +1,4 @@
-import { difficultyOf, type Activity, type Challenge, type Habit, type HabitCheck, type PauseDay, type WeeklyGoal } from './types';
+import { checkFull, checkPart, difficultyOf, type Activity, type Challenge, type Habit, type HabitCheck, type PauseDay, type WeeklyGoal } from './types';
 import { addDays, daysBetween, mondayOf, today } from './dates';
 
 // ---- Puntenregels (hier aanpassen als de groep andere regels wil) ----
@@ -124,7 +124,9 @@ export function computeScores({ challenge: c, memberIds, activities, goals, habi
       for (const h of myHabits) {
         const r = activeDays(h, w.start, w.end);
         if (!r) continue;
-        const done = myChecks.filter((x) => x.habit_id === h.id && x.check_date >= r.from && x.check_date <= r.to).length;
+        // Bij "3× per dag" telt elke keer voor een derde mee
+        const done = myChecks.filter((x) => x.habit_id === h.id && x.check_date >= r.from && x.check_date <= r.to)
+          .reduce((a, x) => a + checkPart(x, h), 0);
         const eff = effectiveDays(r.from, r.to, paused);
         if (eff === 0) continue; // hele week pauze: doel telt niet mee
         const req = required(h.per_week, eff);
@@ -175,7 +177,7 @@ export function computeScores({ challenge: c, memberIds, activities, goals, habi
 
 /** Streak van één doel: dagen op rij (dagelijks) of weken op rij gehaald (X per week). */
 export function habitStreak(h: Habit, checks: HabitCheck[], paused: Set<string> = new Set(), now = today()): { n: number; unit: 'dag' | 'week' } {
-  const days = new Set(checks.filter((x) => x.habit_id === h.id).map((x) => x.check_date));
+  const days = new Set(checks.filter((x) => x.habit_id === h.id && checkFull(x, h)).map((x) => x.check_date));
   if (h.per_week >= 7) {
     // pauzedagen tellen niet mee, maar breken de streak ook niet
     let d = days.has(now) || paused.has(now) ? now : addDays(now, -1);
@@ -240,13 +242,13 @@ export function dayStatus(userId: string, day: string, habits: Habit[], checks: 
   const paused = pausedSet.has(day);
   let done = 0, total = 0;
   for (const h of mine) {
-    const checkedToday = myChecks.some((x) => x.habit_id === h.id && x.check_date === day);
+    const checkedToday = myChecks.some((x) => x.habit_id === h.id && x.check_date === day && checkFull(x, h));
     if (h.per_week >= 7) {
       total += 1;
       if (checkedToday) done += 1;
     } else {
       const r = activeDays(h, mon, addDays(mon, 6));
-      const before = myChecks.filter((x) => x.habit_id === h.id && x.check_date >= mon && x.check_date < day).length;
+      const before = myChecks.filter((x) => x.habit_id === h.id && x.check_date >= mon && x.check_date < day && checkFull(x, h)).length;
       const eff = r ? effectiveDays(r.from, r.to, pausedSet) : 0;
       const weekMet = r && eff > 0 ? before >= required(h.per_week, eff) : false;
       if (checkedToday) { total += 1; done += 1; } else if (!weekMet) { total += 1; }

@@ -60,7 +60,7 @@ export async function loadGroupData(groupId: string): Promise<GroupData> {
       .eq('activities.group_id', groupId).order('created_at')),
     // Doelen/vinkjes/high fives: als de database-update nog niet is gedraaid, gewoon leeg laten.
     supabase.rpc('group_habits', { gid: groupId }).then(({ data }) => (data ?? []) as Habit[]),
-    supabase.from('habit_checks').select('habit_id, group_id, user_id, check_date').eq('group_id', groupId)
+    supabase.from('habit_checks').select('*').eq('group_id', groupId)
       .then(({ data }) => (data ?? []) as HabitCheck[]),
     supabase.from('cheers').select('*').eq('group_id', groupId)
       .then(({ data }) => ((data ?? []) as Cheer[]).map((c) => ({ ...c, kind: c.kind ?? 'highfive' }))),
