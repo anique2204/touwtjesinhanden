@@ -47,6 +47,12 @@ Open de app, log in, maak de groep aan en deel via **Groep → Deel uitnodigings
 Elke push naar `main` wordt automatisch door Vercel online gezet. Laat de repository openbaar: bij een privé
 repository blokkeert het gratis Vercel-abonnement wijzigingen die niet van de eigenaar van het project komen.
 
+## Meldingen (pushmeldingen)
+- Edge Function: `supabase/functions/notify/index.ts` (in Supabase onder de naam `notify`, zonder JWT-controle; beveiligd met `x-cron-secret` of de ingelogde gebruiker).
+- Geheimen bij de functie: `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `CRON_SECRET`. De publieke VAPID-sleutel staat ook in `src/push.ts`.
+- Planning: pg_cron-taak `lockedin-notify` roept elke 5 minuten de functie aan (`{"action":"tick"}`), met het geheim uit Supabase Vault (`notify_cron_secret`).
+- Ochtendboodschap gebruikt het weer in Breukelen via open-meteo.com (geen sleutel nodig).
+
 ## Lokaal ontwikkelen
 ```bash
 cp .env.example .env   # vul je Supabase-gegevens in

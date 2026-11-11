@@ -3,6 +3,7 @@ import { errMsg, supabase } from '../supabase';
 import { useStore } from '../store';
 import { addDays, shortDate, today } from '../dates';
 import Avatar from '../components/Avatar';
+import { callNotify } from '../push';
 
 export default function GroupPage({ back }: { back: () => void }) {
   const { me, data, isAdmin, reload } = useStore();
@@ -46,6 +47,21 @@ export default function GroupPage({ back }: { back: () => void }) {
 
   const t = today();
   const [renaming, setRenaming] = useState(false);
+  const [bMsg, setBMsg] = useState('');
+  const [bBusy, setBBusy] = useState(false);
+  const [bResult, setBResult] = useState<string | null>(null);
+
+  async function broadcast(e: FormEvent) {
+    e.preventDefault();
+    if (!bMsg.trim() || !confirm(`Dit bericht als melding naar de hele groep sturen?\n\n"${bMsg.trim()}"`)) return;
+    setBBusy(true); setBResult(null);
+    try {
+      const r = await callNotify({ action: 'broadcast', group_id: data.group.id, message: bMsg.trim() });
+      setBResult(`Verstuurd naar ${r.sent} ${Number(r.sent) === 1 ? 'toestel' : 'toestellen'} ✓ (wie meldingen aan heeft staan)`);
+      setBMsg('');
+    } catch (err) { setBResult('Versturen lukte niet: ' + errMsg(err)); }
+    setBBusy(false);
+  }
   const [gName, setGName] = useState(data.group.name);
 
   async function rename(e: FormEvent) {
@@ -82,6 +98,16 @@ export default function GroupPage({ back }: { back: () => void }) {
             </form>
           )}
         </div>
+      )}
+
+      {isAdmin && (
+        <form className="card stack" onSubmit={broadcast}>
+          <h2>📣 Bericht aan de groep</h2>
+          <p className="muted small">Verschijnt als pushmelding bij iedereen die meldingen aan heeft staan.</p>
+          <textarea rows={2} maxLength={200} value={bMsg} onChange={(e) => setBMsg(e.target.value)} placeholder="Bijv. Nog 2 weken, zet 'm op! 💪" />
+          <button className="btn" disabled={bBusy || !bMsg.trim()}>{bBusy ? 'Versturen…' : 'Verstuur melding'}</button>
+          {bResult && <p className="small muted">{bResult}</p>}
+        </form>
       )}
 
       <div className="card stack">

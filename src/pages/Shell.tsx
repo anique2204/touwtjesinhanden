@@ -8,8 +8,9 @@ import Progress from './Progress';
 import Calendar from './Calendar';
 import Goals from './Goals';
 import Body from './Body';
+import Notifications from './Notifications';
 
-export type Tab = 'today' | 'calendar' | 'add' | 'ranking' | 'me' | 'group' | 'progress' | 'goals' | 'body';
+export type Tab = 'today' | 'calendar' | 'add' | 'ranking' | 'me' | 'group' | 'progress' | 'goals' | 'body' | 'notifications';
 
 const TABS: { id: Tab; label: string; icon: string }[] = [
   { id: 'today', label: 'Vandaag', icon: '🏠' },
@@ -20,7 +21,7 @@ const TABS: { id: Tab; label: string; icon: string }[] = [
 ];
 
 // Subpagina's horen bij een tabblad (voor de markering onderin)
-const PARENT: Partial<Record<Tab, Tab>> = { group: 'me', progress: 'me', goals: 'today', body: 'me' };
+const PARENT: Partial<Record<Tab, Tab>> = { group: 'me', progress: 'me', goals: 'today', body: 'me', notifications: 'me' };
 
 export default function Shell() {
   const [tab, setTab] = useState<Tab>('today');
@@ -40,6 +41,7 @@ export default function Shell() {
         {tab === 'progress' && <Progress back={() => go('me')} />}
         {tab === 'goals' && <Goals back={() => go('today')} />}
         {tab === 'body' && <Body back={() => go('me')} />}
+        {tab === 'notifications' && <Notifications back={() => go('me')} />}
       </main>
 
       {sheet && (

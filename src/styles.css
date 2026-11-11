@@ -420,3 +420,8 @@ label.btn { display: inline-block; text-align: center; cursor: pointer; }
 .time-chip input { border: 0; padding: 4px; width: auto; box-shadow: none !important; }
 .hchip.part { opacity: 1; box-shadow: inset 0 0 0 1px var(--accent-line); }
 .hchip-n { font-weight: 700; color: var(--accent); }
+.notif-row { padding: 8px 0; border-bottom: 1px solid var(--line); display: flex; flex-direction: column; gap: 6px; }
+.notif-row:last-child { border-bottom: 0; }
+.small-icon { font-size: 20px; }
+.time-row { display: flex; align-items: center; gap: 10px; padding-left: 38px; }
+.time-row input { width: auto; padding: 6px 10px; }

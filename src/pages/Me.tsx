@@ -110,6 +110,7 @@ export default function Me({ go }: { go: (t: Tab) => void }) {
         <div className="tile"><b>{mine.filter((a) => a.is_pr).length}</b><span>PR's</span></div>
       </div>
 
+      <NavCard icon="🔔" title="Meldingen" sub="Herinneringen en nieuws uit de groep · zelf instellen" onClick={() => go('notifications')} />
       <NavCard icon="🎯" title="Mijn doelen" sub={goalsCount ? `${goalsCount} actieve ${goalsCount === 1 ? 'doel' : 'doelen'} · toevoegen of wijzigen` : 'Kies wat je wilt volhouden'} onClick={() => go('goals')} />
       <NavCard icon="📸" title="Mijn voortgang" sub="Foto’s, gewicht, taille en buikomtrek · 🔒 privé" onClick={() => go('progress')} />
       <NavCard icon="🌸" title="Cyclus & lichaam" sub="Menstruatie, seks en je ritme · 🔒 privé" onClick={() => go('body')} />
