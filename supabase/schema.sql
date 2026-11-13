@@ -827,3 +827,9 @@ create table if not exists public.notify_watermarks (
 alter table public.notify_watermarks enable row level security;
 
 -- Oude logregels opruimen kan later; voor 5 mensen is dit klein.
+
+
+-- LockedIn — per toestel bijhouden hoe het laatste versturen afliep (voor foutopsporing)
+alter table public.push_subscriptions add column if not exists last_status int;
+alter table public.push_subscriptions add column if not exists last_error text;
+alter table public.push_subscriptions add column if not exists last_sent_at timestamptz;

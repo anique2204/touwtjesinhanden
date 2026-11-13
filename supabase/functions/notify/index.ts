@@ -70,16 +70,19 @@ async function sendTo(userId: string, payload: Payload): Promise<number> {
   let sent = 0;
   for (const s of subs ?? []) {
     try {
-      await webpush.sendNotification(
+      const res = await webpush.sendNotification(
         { endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } },
         JSON.stringify({ url: APP_URL, ...payload }),
-        { TTL: 6 * 3600, urgency: 'normal' },
+        { TTL: 6 * 3600, urgency: 'high' },
       );
       sent += 1;
+      await db.from('push_subscriptions').update({ last_status: res.statusCode, last_error: null, last_sent_at: new Date().toISOString() }).eq('endpoint', s.endpoint);
     } catch (e) {
-      const code = (e as { statusCode?: number }).statusCode;
+      const code = (e as { statusCode?: number }).statusCode ?? 0;
+      const detail = `${(e as Error).message} ${(e as { body?: string }).body ?? ''}`.slice(0, 300);
       if (code === 404 || code === 410) await db.from('push_subscriptions').delete().eq('endpoint', s.endpoint); // toestel bestaat niet meer
-      else console.error('push mislukt', code, (e as Error).message);
+      else await db.from('push_subscriptions').update({ last_status: code, last_error: detail, last_sent_at: new Date().toISOString() }).eq('endpoint', s.endpoint);
+      console.error('push mislukt', code, detail);
     }
   }
   return sent;
@@ -258,6 +261,15 @@ Deno.serve(async (req) => {
     if (action === 'tick') {
       if (!cronOk) return json({ error: 'niet toegestaan' }, 401);
       return json(await tick());
+    }
+    if (action === 'diag') {
+      // Stuurt één diagnosemelding naar een gebruiker (op naam) en geeft per toestel het resultaat terug
+      if (!cronOk) return json({ error: 'niet toegestaan' }, 401);
+      const { data: prof } = await db.from('profiles').select('id').eq('display_name', String(body.name ?? '')).maybeSingle();
+      if (!prof) return json({ error: 'onbekende naam' }, 404);
+      const sent = await sendTo(prof.id, { title: 'Testmelding 🔔', body: 'Zie je deze? Dan werken je meldingen! 💪', tag: 'diag' });
+      const { data: subs } = await db.from('push_subscriptions').select('last_status, last_error, last_sent_at, created_at').eq('user_id', prof.id);
+      return json({ sent, subs });
     }
     if (action === 'selftest') {
       if (!cronOk) return json({ error: 'niet toegestaan' }, 401);
