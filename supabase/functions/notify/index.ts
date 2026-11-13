@@ -65,9 +65,11 @@ type Check = { habit_id: string; user_id: string; check_date: string; count: num
 type Payload = { title: string; body: string; url?: string; tag?: string };
 
 // ---------- Versturen ----------
+let lastErrors: string[] = [];
 async function sendTo(userId: string, payload: Payload): Promise<number> {
   const { data: subs } = await db.from('push_subscriptions').select('*').eq('user_id', userId);
   let sent = 0;
+  lastErrors = [];
   for (const s of subs ?? []) {
     try {
       const res = await webpush.sendNotification(
@@ -82,10 +84,28 @@ async function sendTo(userId: string, payload: Payload): Promise<number> {
       const detail = `${(e as Error).message} ${(e as { body?: string }).body ?? ''}`.slice(0, 300);
       if (code === 404 || code === 410) await db.from('push_subscriptions').delete().eq('endpoint', s.endpoint); // toestel bestaat niet meer
       else await db.from('push_subscriptions').update({ last_status: code, last_error: detail, last_sent_at: new Date().toISOString() }).eq('endpoint', s.endpoint);
+      lastErrors.push(`${code} ${detail}`.slice(0, 200));
       console.error('push mislukt', code, detail);
     }
   }
   return sent;
+}
+
+/** Verstuur en schrijf het resultaat bij de logregel (kind/key) weg. */
+async function sendLogged(userId: string, kind: string, key: string, payload: Payload): Promise<number> {
+  let n = 0;
+  try { n = await sendTo(userId, payload); } catch (e) { lastErrors = [String((e as Error).message)]; }
+  await db.from('notification_log').update({ delivered: n, error: lastErrors.join(' | ') || null, title: payload.title.slice(0, 100) })
+    .eq('user_id', userId).eq('kind', kind).eq('key', key);
+  return n;
+}
+
+/** Ochtendboodschap opbouwen (ook gebruikt door de test). */
+function morningPayload(name: string, weather: { emoji: string; text: string }, nGoals: number, isPaused: boolean): Payload {
+  const goals = isPaused ? 'Pauzedag vandaag, geniet ervan 🌙'
+    : nGoals ? `Vandaag staan er ${nGoals} doelen voor je klaar. Je kunt het! 💪`
+    : 'Kies vandaag een doel om mee te beginnen 🎯';
+  return { title: `Goedemorgen ${name}! ${weather.emoji}`, body: `${weather.text} ${goals}`, tag: 'morning' };
 }
 
 /** Leg vast dat een melding verstuurd wordt; false als dat al eerder gebeurde (geen dubbele meldingen). */
@@ -163,16 +183,13 @@ async function tick() {
     // 1. Ochtendboodschap
     if (p.morning && isDue(p.morning_time, now) && await claim(u, 'morning', today)) {
       weather ??= await weatherLine();
-      const goals = isPaused ? 'Pauzedag vandaag, geniet ervan 🌙'
-        : mine.length ? `Vandaag staan er ${mine.length} doelen voor je klaar. Je kunt het! 💪`
-        : 'Kies vandaag een doel om mee te beginnen 🎯';
-      sent += await sendTo(u, { title: `Goedemorgen ${name}! ${weather.emoji}`, body: `${weather.text} ${goals}`, tag: 'morning' });
+      sent += await sendLogged(u, 'morning', today, morningPayload(name, weather, mine.length, isPaused));
     }
 
     // 2. Avondherinnering (alleen als er nog dagelijkse doelen open staan)
     const open = mine.filter((h) => h.per_week >= 7 && !full(h));
     if (p.evening && !isPaused && open.length && isDue(p.evening_time, now) && await claim(u, 'evening', today)) {
-      sent += await sendTo(u, {
+      sent += await sendLogged(u, 'evening', today, {
         title: open.length === 1 ? 'Nog 1 doel open 🌙' : `Nog ${open.length} doelen open 🌙`,
         body: `${open.map(label).join(', ')}. Je kunt het! 💪`, tag: 'evening',
       });
@@ -187,7 +204,7 @@ async function tick() {
           const body = h.per_day > 1 ? `${c}/${h.per_day} vandaag. Even ${h.title.toLowerCase()} doen?`
             : h.options?.length ? `Kies er één: ${h.options.join(' / ')}`
             : 'Even afvinken als je het gedaan hebt ✓';
-          sent += await sendTo(u, { title: `${h.emoji} Tijd voor ${h.title}!`, body, tag: `habit-${h.id}` });
+          sent += await sendLogged(u, 'habit', `${h.id}:${today}:${t}`, { title: `${h.emoji} Tijd voor ${h.title}!`, body, tag: `habit-${h.id}` });
         }
       }
     }
@@ -261,6 +278,16 @@ Deno.serve(async (req) => {
     if (action === 'tick') {
       if (!cronOk) return json({ error: 'niet toegestaan' }, 401);
       return json(await tick());
+    }
+    if (action === 'diag_morning') {
+      // Stuurt nu precies de ochtendboodschap naar een gebruiker (op naam), zonder logboek
+      if (!cronOk) return json({ error: 'niet toegestaan' }, 401);
+      const { data: prof } = await db.from('profiles').select('id, display_name').eq('display_name', String(body.name ?? '')).maybeSingle();
+      if (!prof) return json({ error: 'onbekende naam' }, 404);
+      const { count } = await db.from('habits').select('id', { count: 'exact', head: true }).eq('user_id', prof.id).is('archived_on', null);
+      const payload = morningPayload(prof.display_name, await weatherLine(), count ?? 0, false);
+      const sent = await sendTo(prof.id, payload);
+      return json({ sent, errors: lastErrors, payload });
     }
     if (action === 'diag') {
       // Stuurt één diagnosemelding naar een gebruiker (op naam) en geeft per toestel het resultaat terug

@@ -833,3 +833,9 @@ alter table public.notify_watermarks enable row level security;
 alter table public.push_subscriptions add column if not exists last_status int;
 alter table public.push_subscriptions add column if not exists last_error text;
 alter table public.push_subscriptions add column if not exists last_sent_at timestamptz;
+
+
+-- LockedIn — per verstuurde melding vastleggen hoeveel toestellen hem kregen en welke fout er was
+alter table public.notification_log add column if not exists delivered int;
+alter table public.notification_log add column if not exists error text;
+alter table public.notification_log add column if not exists title text;
