@@ -118,17 +118,31 @@ async function claim(userId: string, kind: string, key: string): Promise<boolean
 async function weatherLine(): Promise<{ emoji: string; text: string }> {
   try {
     const u = `https://api.open-meteo.com/v1/forecast?latitude=${BREUKELEN.lat}&longitude=${BREUKELEN.lon}` +
-      '&daily=weather_code,temperature_2m_max,precipitation_probability_max&timezone=Europe%2FAmsterdam&forecast_days=1';
+      '&daily=temperature_2m_max,precipitation_probability_max,sunshine_duration' +
+      '&hourly=weather_code,precipitation&timezone=Europe%2FAmsterdam&forecast_days=1';
     const d = await (await fetch(u)).json();
-    const code: number = d.daily.weather_code[0];
     const t = Math.round(d.daily.temperature_2m_max[0]);
+    const prob: number = d.daily.precipitation_probability_max[0] ?? 0;
+    const sunH: number = (d.daily.sunshine_duration[0] ?? 0) / 3600;
+    // Alleen het weer overdag (8:00–20:00) telt; een buitje om 6 uur 's ochtends maakt de dag niet "nat"
+    const hours = (d.hourly.time as string[]).map((tm, i) => ({ h: Number(tm.slice(11, 13)), code: d.hourly.weather_code[i] as number, mm: d.hourly.precipitation[i] as number }))
+      .filter((x) => x.h >= 8 && x.h <= 20);
+    const rainMm = hours.reduce((a, x) => a + (x.mm ?? 0), 0);
+    const has = (f: (c: number) => boolean) => hours.some((x) => f(x.code));
     const pick = (xs: string[]) => xs[new Date().getDate() % xs.length];
-    if (code <= 1) return { emoji: '☀️', text: pick([`De zon schijnt vandaag in Breukelen (${t}°) en jij bent ook een zonnetje!`, `Zonnig en ${t}°: een stralende dag, net als jij ☀️`]) };
-    if (code <= 3) return { emoji: '⛅', text: pick([`Een beetje zon, een beetje wolken (${t}°). Jij brengt vandaag de zon mee!`, `Wisselvallig, ${t}°. Jij bent het lichtpuntje vandaag ⛅`]) };
-    if (code === 45 || code === 48) return { emoji: '🌫️', text: `Mistig begin (${t}°)… maar jij ziet je doelen haarscherp!` };
-    if ((code >= 71 && code <= 77) || code === 85 || code === 86) return { emoji: '❄️', text: `Sneeuw! (${t}°) Warm jezelf op met je doelen ❄️` };
-    if (code >= 95) return { emoji: '⛈️', text: `Onweer buiten, rust binnen. Jij hebt het in handen! (${t}°)` };
-    return { emoji: '🌧️', text: pick([`Regen vandaag (${t}°). Grijs buiten? Jij maakt het licht 💛`, `Natte dag (${t}°), perfect voor binnen-squats! 💪`]) };
+
+    if (has((c) => c >= 95)) return { emoji: '⛈️', text: `Onweer in de lucht (${t}°). Rust binnen, jij hebt het in handen!` };
+    if (has((c) => (c >= 71 && c <= 77) || c === 85 || c === 86)) return { emoji: '❄️', text: `Sneeuw vandaag! (${t}°) Warm jezelf op met je doelen ❄️` };
+    if (rainMm >= 1 && prob >= 50) {
+      return { emoji: '🌧️', text: pick([`Regen vandaag (${t}°). Grijs buiten? Jij maakt het licht 💛`, `Natte dag (${t}°), perfect voor binnen-squats! 💪`]) };
+    }
+    const shower = rainMm >= 0.2 || prob >= 30 ? ', misschien een klein buitje' : '';
+    if (hours.filter((x) => x.h <= 10).some((x) => x.code === 45 || x.code === 48) && sunH < 3) {
+      return { emoji: '🌫️', text: `Mistig begin (${t}°)… maar jij ziet je doelen haarscherp!` };
+    }
+    if (sunH >= 5) return { emoji: '☀️', text: pick([`Veel zon vandaag in Breukelen (${t}°${shower}). Jij bent ook een zonnetje!`, `Zonnig en ${t}°${shower}: een stralende dag, net als jij ☀️`]) };
+    if (sunH >= 2) return { emoji: '⛅', text: pick([`Af en toe zon (${t}°${shower}). Jij brengt vandaag de zon mee!`, `Zon en wolken, ${t}°${shower}. Jij bent het lichtpuntje vandaag ⛅`]) };
+    return { emoji: '☁️', text: pick([`Grijs en ${t}°${shower}. Tijd om zelf een beetje zon te zijn ☁️💛`, `Bewolkt vandaag (${t}°${shower}), maar jouw dag kan stralen!`]) };
   } catch {
     return { emoji: '🌞', text: 'Een nieuwe dag, een nieuwe kans. Jij kunt dit!' };
   }
