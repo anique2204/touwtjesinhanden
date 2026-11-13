@@ -293,6 +293,30 @@ Deno.serve(async (req) => {
       if (!cronOk) return json({ error: 'niet toegestaan' }, 401);
       return json(await tick());
     }
+    if (action === 'broadcast_as') {
+      // Beheerder-bericht versturen namens een beheerder (op naam), vanaf de server. Vereist x-cron-secret.
+      if (!cronOk) return json({ error: 'niet toegestaan' }, 401);
+      const message = String(body.message ?? '').trim().slice(0, 200);
+      const { data: sender } = await db.from('profiles').select('id, display_name').eq('display_name', String(body.sender ?? '')).maybeSingle();
+      if (!sender || !message) return json({ error: 'afzender of bericht ontbreekt' }, 400);
+      const { data: adminOf } = await db.from('group_members').select('group_id').eq('user_id', sender.id).eq('role', 'admin');
+      const results: Record<string, number> = {};
+      for (const g of adminOf ?? []) {
+        const [{ data: group }, { data: mem }] = await Promise.all([
+          db.from('groups').select('name').eq('id', g.group_id).single(),
+          db.from('group_members').select('user_id').eq('group_id', g.group_id),
+        ]);
+        const targets = (mem ?? []).map((m) => m.user_id as string).filter((id) => id !== sender.id);
+        const { data: prefs } = await db.from('notification_prefs').select('user_id, broadcasts').in('user_id', targets);
+        const { data: names } = await db.from('profiles').select('id, display_name').in('id', targets);
+        for (const t of targets) {
+          const who = names?.find((n) => n.id === t)?.display_name ?? t;
+          if (prefs?.find((p) => p.user_id === t)?.broadcasts === false) { results[who] = -1; continue; }
+          results[who] = await sendTo(t, { title: `📣 ${group?.name ?? 'LockedIn'}`, body: `${sender.display_name}: ${message}`, tag: `broadcast-${Date.now()}` });
+        }
+      }
+      return json({ results });
+    }
     if (action === 'diag_morning') {
       // Stuurt nu precies de ochtendboodschap naar een gebruiker (op naam), zonder logboek
       if (!cronOk) return json({ error: 'niet toegestaan' }, 401);
